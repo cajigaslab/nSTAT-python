@@ -296,18 +296,88 @@ does about it, and the known gaps.
   Only the identifiable block is projected with `nearestSPD`, which itself
   never returns on a singular matrix (as in nSTAT PR #137); projecting the
   whole pseudo-inverse could hang.
-- Not changed: the `KF_EM` family. MATLAB's upper-factor draws and whitening
-  are mirrored, but its information blocks are not: Python uses the intended
-  `(N/2) R^-1 e e' R^-1` (and `(1/2) P^-1 e e' P^-1`) forms, where MATLAB's
-  `KF_EM.m` (`:510`, `:521`, `:577`, `:588`, `:623`) has the precedence defect
-  fixed for the point-process routines (`N/2*(R)\e*e'/(R)` evaluates to
-  `(2/N) R^-1 e e' R^-1`), so `KF_EM`'s `SE.Q` / `SE.R` / `SE.Px0` differ from
-  MATLAB's. Its SE pass also keeps the older conventions: a Higham projection
-  with eigenvalues clamped at eps (not MATLAB's `nearestSPD` shift loop) and
-  p = 1 for an SE <= 0, where the point-process routines now give MATLAB's
-  p = 0 for an SE of 0. Also not changed: counts of a full `Q` / `R` by all d^2 entries, the
-  non-scale-equivariant `nearestSPD`, the GLM M-step's plug-in drift, and the
-  absence of an analytic check of `SE.x0` / `SE.Px0`.
+- The `KF_EM` family is now repaired too (nSTAT PR #138; see the dedicated
+  section below) -- fixed in the same pass as everything above. Still not
+  changed, for every EM family (`PP_EM`/`PPLFP_EM`/`KF_EM`) alike: counts of a
+  full `Q` / `R` by all d^2 entries, the non-scale-equivariant `nearestSPD`,
+  the GLM M-step's plug-in drift (now warned about; see the dedicated section
+  below), and the absence of an analytic check of `SE.x0` / `SE.Px0`.
+
+**Kalman-filter EM (`KF_EM`) mirrors the repaired MATLAB (nSTAT PR #138)**
+
+The MATLAB Kalman-filter EM routine was repaired upstream and merged (nSTAT
+PR #138, `fix/kf-em` @ `cb4edd2`), the same defect classes F9/G1/H1/#136
+already fixed for `PP_EM`/`PPLFP_EM` (nSTAT PR #135/#137) plus one KF-specific
+IC bug.  `DecodingAlgorithms.KF_EM` / `KF_ComputeParamStandardErrors` now
+mirror it.  `parity/matlab_defects.yml` lists the defect and what Python now
+does (entry `em-kf-family-not-repaired`, status updated to `adopted-upstream`).
+
+*Fixes*
+
+- Monte Carlo state/x0 draws (F9) used the upper Cholesky factor (covariance
+  `chol(W) chol(W)'`, not `W`, for a non-diagonal `W`); now routed through the
+  shared `_mc_state_draws` helper (lower factor), as `PP_*`/`PPLFP_*` already
+  are.
+- Whitening (G1): `KF_EM` scaled the state/observation system with the upper
+  Cholesky factor (`Tq = inv(chol(Q0))`), which only whitens exactly
+  (`Tq Q0 Tq' = I`) for a diagonal `Q0`/`R0`; with a non-diagonal `Q0`/`R0`
+  and the default diagonal constraints, the first M-step lowered the
+  log-likelihood and EM returned its initial parameters. Now uses the lower
+  factor; bit-identical for a diagonal `Q0`/`R0`.
+- Scale consistency: after un-scaling, `xKFinal`/`WKFinal`/`ll`/
+  `ExpectationSumsFinal` were left on the internal whitened-system scale
+  while `Ahat`/`Qhat`/.../`Px0hat` were mapped to the original scale, and `y`
+  was never restored, so the SE call and `IC` formula mixed scales. `KF_EM`
+  now recomputes the E-step once at the unscaled parameters and the original
+  `y` (the Kalman filter/smoother is exactly equivariant under this linear
+  change of variables), so `IC.llcomp` equals the E-step log-likelihood at
+  the returned estimates, as in `PP_EM`/`PPLFP_EM`.
+- `IC`'s parameter count for `R` tested `QhatDiag`/`QhatIsotropic` instead of
+  `RhatDiag`/`RhatIsotropic`, so `IC.nTerms`/`AIC`/`AICc`/`BIC` were wrong
+  whenever they differed from the defaults.
+- Operator precedence (H1): MATLAB's `KF_EM.m` computed its `Q`/`R`/`Px0`
+  information blocks as `N/2*(Rhat)\em(:,m)*el(:,l)'/(Rhat)`, which MATLAB
+  parses as `((N/2)*Rhat)^-1 * em*el' / Rhat`, not the intended
+  `(N/2) * Rhat^-1 * em*el' * Rhat^-1` -- the same defect class H1 already
+  fixed for `PP_*`/`PPLFP_*` (nSTAT PR #135). **No Python change needed
+  here**: the Python port never had this defect, because its five
+  information-block sites were always written as explicit nested function
+  calls (`(N / 2.0) * np.linalg.solve(Rhat, ...) @ np.linalg.inv(Rhat)`),
+  which has no MATLAB-operator-chain ambiguity to get wrong.
+- `KF_ComputeParamStandardErrors`'s SE pass hung forever on an exactly
+  singular observed information matrix (as in nSTAT PR #137 / #136, fixed for
+  `PP_*`/`PPLFP_*` already): it now returns the pseudo-inverse, with every
+  parameter in the null space (not identifiable) getting `SE`/`Pvals` NaN and
+  a `RuntimeWarning` naming them.
+- SE/p-value conventions: `KF_ComputeParamStandardErrors` used a
+  Python-only, non-MATLAB pair (a Higham `nearestSPD` with eigenvalues
+  clamped at eps, and a p-value of 1 for an SE <= 0); now uses the same
+  MATLAB-exact `nearestSPD`/`ztest` staticmethods `PP_*`/`PPLFP_*` already do
+  (p = 0 for an SE of 0, not 1).
+
+MATLAB's own C0 (the `KF_EM` entry point was unreachable, a
+`Static`-method-name collision fixed by the same MATLAB PR) has no Python
+analog: `DecodingAlgorithms.KF_EM` already ran end to end.
+
+**GLM plug-in M-step now warns (user decision; mirrors nSTAT PR #138)**
+
+`PP_EM` / `PP_MStep` / `PPLFP_EM` / `PPLFP_MStep` (and the `mPPCO_*`
+forwarders) now emit a `GLMPlugInWarning` once per top-level call when
+`MstepMethod='GLM'`: it is a plug-in fit on the smoothed means (ignores
+`W_K`), which inflates `beta` and can drift; `'NewtonRaphson'` (the default)
+is preferred. No numerical change.
+
+**EM docstrings document two design decisions (docs only; no numerical
+change)**
+
+- `PP_EMCreateConstraints` / `PPLFP_EMCreateConstraints` /
+  `KF_EMCreateConstraints`: with a non-diagonal starting `Q0`/`R0`,
+  `QhatDiag=1` / `RhatDiag=1` mean "diagonal in the frame whitened by
+  `Q0`/`R0`", not the caller's own state/observation coordinates.
+- `PP_EM` / `PPLFP_EM` / `KF_EM`: EM stops at the first decrease of the
+  log-likelihood, not at convergence; under PP/PPLFP's Monte Carlo M-step
+  this makes the stopping iteration random run to run, while `KF_EM`'s
+  closed-form E/M steps make it deterministic for a fixed problem.
 
 **Docs**
 

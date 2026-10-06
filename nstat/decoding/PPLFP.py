@@ -29,6 +29,7 @@ incrementally.
 from __future__ import annotations
 
 import logging
+import warnings
 from typing import Any
 
 import numpy as np
@@ -38,10 +39,12 @@ from nstat.decoding_algorithms import (
     _EM_LL_TOL,
     _EM_MAX_ITER,
     _EM_TOL_ABS,
+    GLMPlugInWarning,
     _as_observation_matrix,
     _as_state_matrix,
     _check_mstep_method,
     _em_glm_mstep,
+    _glm_plugin_warning_message,
     _expand_shared_se_gamma,
     _is_empty_value,
     _em_se_term_labels,
@@ -872,6 +875,20 @@ class PPLFP:
             ``RhatDiag``, ``RhatIsotropic``, ``Estimatex0``,
             ``EstimatePx0``, ``Px0Isotropic``, ``mcIter``,
             ``EnableIkeda``.
+
+        Notes
+        -----
+        Docs only; mirrors nSTAT PR #138 (``fix/kf-em`` @ ``584ec96``).
+        ``QhatDiag=1`` / ``RhatDiag=1`` impose diagonal structure on
+        ``Qhat`` / ``Rhat`` in the frame ``PPLFP_EM`` internally whitens by
+        the STARTING covariances ``Q0`` / ``R0`` (``Tq = inv(chol(Q0,
+        'lower'))``, ``Tr = inv(chol(R0, 'lower'))``; see G1), not in the
+        caller's own state / observation coordinates.  For a diagonal
+        ``Q0`` / ``R0`` the two frames coincide, so this is invisible.  For
+        a non-diagonal ``Q0`` / ``R0``, "``Qhat``/``Rhat`` is diagonal"
+        means ``Tq @ Qhat @ Tq.T`` / ``Tr @ Rhat @ Tr.T`` is diagonal; the
+        returned ``Qhat`` / ``Rhat`` (mapped back to the caller's
+        coordinates) generally is not.
         """
         C: dict = {}
         C["EstimateA"] = EstimateA
@@ -1857,6 +1874,12 @@ class PPLFP:
           (``delta`` sets the GLM M-step's time base, MATLAB R4c).
         - The MATLAB convergence test uses elementwise sqrt(Q)/sqrt(R)
           which assumes the scaled (whitened) system; we preserve that.
+        - (Docs only; mirrors nSTAT PR #138, ``fix/kf-em`` @ ``584ec96``.)
+          EM stops at the FIRST decrease of the log-likelihood, not at
+          convergence; see ``PP_EM``'s identical note for why this makes
+          the stopping iteration (and hence ``nIter`` and which iterate the
+          outputs come from) random under the NewtonRaphson M-step's Monte
+          Carlo expectation.
         """
         # ---- Defaults (mirror MATLAB ``nargin<...`` cascade) ----------
         Ahat0 = np.asarray(Ahat0, dtype=float)
@@ -1997,6 +2020,14 @@ class PPLFP:
         stoppingCriteria = False
         dLikelihood: list[float] = [np.inf]
 
+        # FIX (M3, mirrors nSTAT PR #138 @ 3f91924): warn once per
+        # PPLFP_EM call (not once per internal M-step iteration) when
+        # MstepMethod is 'GLM'; see PP_EM's identical fix. PPLFP_MStep's own
+        # identical warning is suppressed for the loop's duration via
+        # _warn_glm=False above.
+        if MstepMethod == "GLM":
+            warnings.warn(_glm_plugin_warning_message("PPLFP_EM"), GLMPlugInWarning, stacklevel=2)
+
         _logger.info(" Joint Point-Process/Gaussian Observation EM Algorithm ")
 
         # ---- Main EM loop ---------------------------------------------
@@ -2070,6 +2101,7 @@ class PPLFP:
                 PPLFP_EM_Constraints,
                 MstepMethod,
                 delta,
+                _warn_glm=False,
             )
 
             # ---- Optional Ikeda acceleration --------------------------
@@ -2137,6 +2169,7 @@ class PPLFP:
                     PPLFP_EM_Constraints,
                     MstepMethod,
                     delta,
+                    _warn_glm=False,
                 )
 
                 Ahat_buf[si_p1] = 2 * Ahat_buf[si_p1] - AhatNew
@@ -2784,6 +2817,7 @@ class PPLFP:
         PPLFP_EM_Constraints=None,
         MstepMethod=None,
         delta=0.001,
+        *, _warn_glm=True,
     ):
         """PPLFP EM maximisation step.
 
@@ -2931,6 +2965,12 @@ class PPLFP:
             algorithm = "BNLRCG"
 
         if MstepMethod == "GLM":
+            # FIX (M3, mirrors nSTAT PR #138 @ 3f91924): warn once per
+            # top-level call; PPLFP_EM suppresses this id for the duration
+            # of its loop (via _warn_glm=False) and warns once itself, so a
+            # direct PPLFP_MStep(..., 'GLM') call still warns exactly once.
+            if _warn_glm:
+                warnings.warn(_glm_plugin_warning_message("PPLFP_MStep"), GLMPlugInWarning, stacklevel=2)
             # MATLAB's GLM M-step (repaired: the getCoeffs() tuple is unpacked
             # -- it crashed here -- and coefficients are mapped BY LABEL, F3 /
             # R4a / F1, with keep-previous for unestimable ones; delta time
