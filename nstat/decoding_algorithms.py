@@ -5648,7 +5648,9 @@ class DecodingAlgorithms:
         mcIter : int
             Number of Monte Carlo iterations for standard error estimation.
         EnableIkeda : int
-            Enable Ikeda acceleration.
+            Enable Ikeda acceleration.  Not ported: ``PP_EM`` raises
+            ``NotImplementedError`` when it is 1 (MATLAB runs an Ikeda step,
+            history-free models only).
 
         Returns
         -------
@@ -6270,6 +6272,8 @@ class DecodingAlgorithms:
         ``numWindows x 1`` gamma is expanded to every cell.  History is built
         on the ``delta`` grid.  EM stops before the M-step if the E-step
         log-likelihood is not finite and returns the best finite iterate.
+        ``EnableIkeda = 1`` (MATLAB's Ikeda acceleration step) is not ported
+        and raises ``NotImplementedError``.
 
         Parameters
         ----------
@@ -6300,6 +6304,15 @@ class DecodingAlgorithms:
 
         if PPEM_Constraints is None:
             PPEM_Constraints = DecodingAlgorithms.PP_EMCreateConstraints()
+        if PPEM_Constraints.get("EnableIkeda", 0):
+            # MATLAB's PP_EM runs an Ikeda acceleration step after each M-step
+            # (re-simulated spikes, a second E-/M-step, 2*theta - thetaNew)
+            # when EnableIkeda = 1 -- for a model without history only; with
+            # history it errors (IkedaHistNotImplemented).  It is not ported:
+            # this port used to ignore the option silently.
+            raise NotImplementedError(
+                "PP_EM: PPEM_Constraints['EnableIkeda'] = 1 (Ikeda acceleration) is not ported; "
+                "pass EnableIkeda=0 (the default)")
         if Px0 is None:
             Px0 = 1e-9 * np.eye(numStates)
         else:

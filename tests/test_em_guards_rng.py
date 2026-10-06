@@ -290,3 +290,13 @@ def test_successive_monte_carlo_blocks_draw_fresh_normals(family, monkeypatch) -
     assert blocks
     for zs in blocks:  # every normal block of a run is distinct
         assert len({z.tobytes() for z in zs}) == len(zs)
+
+
+def test_pp_em_rejects_ikeda_acceleration() -> None:
+    # MATLAB's PP_EM runs an Ikeda acceleration step when EnableIkeda = 1 (a
+    # model without history; it errors with history).  The step is not ported;
+    # the port ignored the option silently (fence P7) and now raises.
+    cons = DecodingAlgorithms.PP_EMCreateConstraints(EnableIkeda=1, mcIter=5)
+    with pytest.raises(NotImplementedError, match="EnableIkeda"):
+        DecodingAlgorithms.PP_EM(np.zeros((1, 20)), np.eye(1), 0.01 * np.eye(1), np.array([-3.0]), np.zeros((1, 1)),
+                                 PPEM_Constraints=cons)
