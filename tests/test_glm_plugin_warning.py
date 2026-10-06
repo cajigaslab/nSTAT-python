@@ -12,6 +12,7 @@ change: this is a warning only.  Mirrors MATLAB's
 """
 from __future__ import annotations
 
+import sys
 import warnings
 
 import numpy as np
@@ -54,7 +55,17 @@ def few_iterations(monkeypatch):
     # The GLM M-step runs a real GLM fit per iteration; cap PP_EM/PPLFP_EM's
     # loop at 2 iterations so the warning-counting tests stay fast. The
     # warning fires before the loop starts, so this does not affect the count.
+    #
+    # Review fix: nstat.decoding.PPLFP does `from nstat.decoding_algorithms
+    # import (..., _EM_MAX_ITER, ...)`, which binds its OWN
+    # nstat.decoding.PPLFP._EM_MAX_ITER name at import time; patching
+    # da._EM_MAX_ITER alone leaves that binding untouched, so PPLFP_EM's
+    # `maxIter = _EM_MAX_ITER` read the real 100, not this fixture's 2 (the
+    # PPLFP_EM tests happened to still be fast only because the gold-fixture
+    # EM-converged inputs stop on their own well under 100 iterations, not
+    # because this fixture capped them). Patch both module bindings.
     monkeypatch.setattr(da, "_EM_MAX_ITER", 2)
+    monkeypatch.setattr(sys.modules[PPLFP.__module__], "_EM_MAX_ITER", 2)
 
 
 def test_pp_em_glm_warns_exactly_once(few_iterations) -> None:

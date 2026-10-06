@@ -878,7 +878,7 @@ class PPLFP:
 
         Notes
         -----
-        (Track-P1 item 5, docs only; mirrors nSTAT PR #138 @ 584ec96.)
+        Docs only; mirrors nSTAT PR #138 (``fix/kf-em`` @ ``584ec96``).
         ``QhatDiag=1`` / ``RhatDiag=1`` impose diagonal structure on
         ``Qhat`` / ``Rhat`` in the frame ``PPLFP_EM`` internally whitens by
         the STARTING covariances ``Q0`` / ``R0`` (``Tq = inv(chol(Q0,
@@ -1874,7 +1874,7 @@ class PPLFP:
           (``delta`` sets the GLM M-step's time base, MATLAB R4c).
         - The MATLAB convergence test uses elementwise sqrt(Q)/sqrt(R)
           which assumes the scaled (whitened) system; we preserve that.
-        - (Track-P1 item 5, docs only; mirrors nSTAT PR #138 @ 584ec96.)
+        - (Docs only; mirrors nSTAT PR #138, ``fix/kf-em`` @ ``584ec96``.)
           EM stops at the FIRST decrease of the log-likelihood, not at
           convergence; see ``PP_EM``'s identical note for why this makes
           the stopping iteration (and hence ``nIter`` and which iterate the

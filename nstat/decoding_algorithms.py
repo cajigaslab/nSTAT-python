@@ -1100,8 +1100,8 @@ def _nearestSPD(A: np.ndarray) -> np.ndarray:
     terminating -- unlike :func:`_matlab_nearest_spd`'s unbounded shift loop,
     which does not return on an exactly singular input (see
     :func:`_em_singular_information_inverse`, which exists precisely because
-    that loop cannot be used there).  KF's own standard-error pass (item 3,
-    track-P1) now uses :func:`DecodingAlgorithms._nearestSPD`
+    that loop cannot be used there).  KF's own standard-error pass now uses
+    :func:`DecodingAlgorithms._nearestSPD`
     (:func:`_matlab_nearest_spd`) instead of this helper, aligning with
     PP/PPLFP; see ``tests/test_review_characterization.py`` section 1.
     """
@@ -4574,17 +4574,17 @@ class DecodingAlgorithms:
 
         Notes
         -----
-        (Track-P1 item 5, docs only; mirrors nSTAT PR #138 @ 584ec96.)
+        Docs only; mirrors nSTAT PR #138 (``fix/kf-em`` @ ``584ec96``).
         ``QhatDiag=1`` / ``RhatDiag=1`` impose diagonal structure on
         ``Qhat`` / ``Rhat`` in the frame ``KF_EM`` internally whitens by the
         STARTING covariances ``Q0`` / ``R0`` (``Tq = inv(chol(Q0,
-        'lower'))``, ``Tr = inv(chol(R0, 'lower'))``; see the C3/G1 fix in
-        ``<SCRATCH>/b2/track-M-report.md``), not in the caller's own state /
-        observation coordinates.  For a diagonal ``Q0`` / ``R0`` the two
-        frames coincide, so this is invisible.  For a non-diagonal ``Q0`` /
-        ``R0``, "``Qhat``/``Rhat`` is diagonal" means ``Tq @ Qhat @ Tq.T`` /
-        ``Tr @ Rhat @ Tr.T`` is diagonal; the returned ``Qhat`` / ``Rhat``
-        (mapped back to the caller's coordinates) generally is not.
+        'lower'))``, ``Tr = inv(chol(R0, 'lower'))``; see the G1 whitening
+        fix), not in the caller's own state / observation coordinates.  For
+        a diagonal ``Q0`` / ``R0`` the two frames coincide, so this is
+        invisible.  For a non-diagonal ``Q0`` / ``R0``, "``Qhat``/``Rhat``
+        is diagonal" means ``Tq @ Qhat @ Tq.T`` / ``Tr @ Rhat @ Tr.T`` is
+        diagonal; the returned ``Qhat`` / ``Rhat`` (mapped back to the
+        caller's coordinates) generally is not.
         """
         C = {}
         C["EstimateA"] = int(EstimateA)
@@ -5211,14 +5211,15 @@ class DecodingAlgorithms:
 
         Notes
         -----
-        (Track-P1 item 5, docs only; mirrors nSTAT PR #138 @ 584ec96 /
-        dd7c7d5.)  EM stops at the FIRST decrease of the log-likelihood, not
-        at convergence; see :meth:`PP_EM`'s identical note for the general
-        rule.  Unlike PP_EM / PPLFP_EM (whose Monte Carlo M-step makes the
-        stopping iteration random run to run), ``KF_EM``'s E-step and
-        M-step are both closed-form and deterministic, so its stopping
-        iteration is NOT random for a fixed problem -- though it still
-        depends on the starting parameters ``Ahat0``/``Qhat0``/.../``Px0``.
+        Docs only; mirrors nSTAT PR #138 (``fix/kf-em`` @ ``584ec96`` /
+        ``dd7c7d5``).  EM stops at the FIRST decrease of the log-likelihood,
+        not at convergence; see :meth:`PP_EM`'s identical note for the
+        general rule.  Unlike PP_EM / PPLFP_EM (whose Monte Carlo M-step
+        makes the stopping iteration random run to run), ``KF_EM``'s
+        E-step and M-step are both closed-form and deterministic, so its
+        stopping iteration is NOT random for a fixed problem -- though it
+        still depends on the starting parameters
+        ``Ahat0``/``Qhat0``/.../``Px0``.
         """
         Ahat0 = np.asarray(Ahat0, dtype=float)
         Qhat0 = np.asarray(Qhat0, dtype=float)
@@ -5969,7 +5970,7 @@ class DecodingAlgorithms:
 
         Notes
         -----
-        (Track-P1 item 5, docs only; mirrors nSTAT PR #138 @ 584ec96.)
+        Docs only; mirrors nSTAT PR #138 (``fix/kf-em`` @ ``584ec96``).
         ``QhatDiag=1`` imposes diagonal structure on ``Qhat`` in the frame
         ``PP_EM`` internally whitens by the STARTING covariance ``Q0``
         (``Tq = inv(chol(Q0, 'lower'))``; see G1), not in the caller's own
@@ -6646,7 +6647,7 @@ class DecodingAlgorithms:
         (0.5 s of 2.1 s at ``mcIter = 100``); pass a smaller ``mcIter`` in
         ``PPEM_Constraints`` to reduce it.
 
-        Note (track-P1 item 5, docs only; mirrors nSTAT PR #138 @ 584ec96):
+        Note (docs only; mirrors nSTAT PR #138, ``fix/kf-em`` @ ``584ec96``):
         EM stops at the FIRST decrease of the log-likelihood
         (``dLikelihood < 0``), not at convergence.  Under the Newton-Raphson
         M-step's Monte Carlo expectation, successive iterations'
