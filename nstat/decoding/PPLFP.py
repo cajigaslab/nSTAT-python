@@ -29,6 +29,7 @@ incrementally.
 from __future__ import annotations
 
 import logging
+import warnings
 from typing import Any
 
 import numpy as np
@@ -38,10 +39,12 @@ from nstat.decoding_algorithms import (
     _EM_LL_TOL,
     _EM_MAX_ITER,
     _EM_TOL_ABS,
+    GLMPlugInWarning,
     _as_observation_matrix,
     _as_state_matrix,
     _check_mstep_method,
     _em_glm_mstep,
+    _glm_plugin_warning_message,
     _expand_shared_se_gamma,
     _is_empty_value,
     _em_se_term_labels,
@@ -1997,6 +2000,14 @@ class PPLFP:
         stoppingCriteria = False
         dLikelihood: list[float] = [np.inf]
 
+        # FIX (M3, mirrors nSTAT PR #138 @ 3f91924): warn once per
+        # PPLFP_EM call (not once per internal M-step iteration) when
+        # MstepMethod is 'GLM'; see PP_EM's identical fix. PPLFP_MStep's own
+        # identical warning is suppressed for the loop's duration via
+        # _warn_glm=False above.
+        if MstepMethod == "GLM":
+            warnings.warn(_glm_plugin_warning_message("PPLFP_EM"), GLMPlugInWarning, stacklevel=2)
+
         _logger.info(" Joint Point-Process/Gaussian Observation EM Algorithm ")
 
         # ---- Main EM loop ---------------------------------------------
@@ -2070,6 +2081,7 @@ class PPLFP:
                 PPLFP_EM_Constraints,
                 MstepMethod,
                 delta,
+                _warn_glm=False,
             )
 
             # ---- Optional Ikeda acceleration --------------------------
@@ -2137,6 +2149,7 @@ class PPLFP:
                     PPLFP_EM_Constraints,
                     MstepMethod,
                     delta,
+                    _warn_glm=False,
                 )
 
                 Ahat_buf[si_p1] = 2 * Ahat_buf[si_p1] - AhatNew
@@ -2784,6 +2797,7 @@ class PPLFP:
         PPLFP_EM_Constraints=None,
         MstepMethod=None,
         delta=0.001,
+        *, _warn_glm=True,
     ):
         """PPLFP EM maximisation step.
 
@@ -2931,6 +2945,12 @@ class PPLFP:
             algorithm = "BNLRCG"
 
         if MstepMethod == "GLM":
+            # FIX (M3, mirrors nSTAT PR #138 @ 3f91924): warn once per
+            # top-level call; PPLFP_EM suppresses this id for the duration
+            # of its loop (via _warn_glm=False) and warns once itself, so a
+            # direct PPLFP_MStep(..., 'GLM') call still warns exactly once.
+            if _warn_glm:
+                warnings.warn(_glm_plugin_warning_message("PPLFP_MStep"), GLMPlugInWarning, stacklevel=2)
             # MATLAB's GLM M-step (repaired: the getCoeffs() tuple is unpacked
             # -- it crashed here -- and coefficients are mapped BY LABEL, F3 /
             # R4a / F1, with keep-previous for unestimable ones; delta time

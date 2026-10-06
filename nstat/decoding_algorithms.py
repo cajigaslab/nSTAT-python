@@ -434,6 +434,32 @@ def _expand_shared_se_gamma(gammahat, windowTimes, num_cells: int):
 _MSTEP_METHODS = ("GLM", "NewtonRaphson")
 
 
+class GLMPlugInWarning(UserWarning):
+    """``MstepMethod='GLM'`` is a plug-in fit on the smoothed means.
+
+    Mirrors MATLAB's ``nSTAT:EM:glmPlugIn`` warning (nSTAT PR #138, user
+    decision track-M item M3): the GLM M-step regresses each cell's spikes
+    on the smoothed state means ``x_K`` and ignores the smoothed covariance
+    ``W_K``, which inflates ``beta`` and can drift; ``MstepMethod =
+    'NewtonRaphson'`` (the default) maximises the expected complete-data
+    log-likelihood over the smoothed posterior and is preferred.
+
+    Raised once per top-level ``PP_EM`` / ``PPLFP_EM`` call (not once per
+    internal M-step iteration) when ``MstepMethod='GLM'``; a direct
+    ``PP_MStep`` / ``PPLFP_MStep`` call with ``MstepMethod='GLM'`` also warns
+    exactly once.  ``mPPCO_EM`` / ``mPPCO_MStep`` forward to PPLFP and
+    inherit this.  No numerical change: this is a warning only.
+    """
+
+
+def _glm_plugin_warning_message(routine: str) -> str:
+    return (
+        f"{routine}: MstepMethod='GLM' is a plug-in fit on the smoothed means "
+        "(ignores W_K), which inflates beta and can drift; 'NewtonRaphson' "
+        "(the default) is preferred."
+    )
+
+
 def _check_mstep_method(MstepMethod):
     """Resolve ``MstepMethod`` (``None`` -> ``'NewtonRaphson'``) and reject unknown values.
 
@@ -6711,6 +6737,13 @@ class DecodingAlgorithms:
         stoppingCriteria = False
         cnt = 0
 
+        # FIX (M3, mirrors nSTAT PR #138 @ 3f91924): warn once per PP_EM
+        # call (not once per internal M-step iteration) when MstepMethod is
+        # 'GLM'; PP_MStep's own identical warning is suppressed for the
+        # loop's duration via _warn_glm=False above.
+        if MstepMethod == "GLM":
+            warnings.warn(_glm_plugin_warning_message("PP_EM"), GLMPlugInWarning, stacklevel=2)
+
         _logger.info("                        Point-Process Observation EM Algorithm                        ")
         while not stoppingCriteria and cnt < maxIter:
             si = cnt % numToKeep
@@ -6747,7 +6780,8 @@ class DecodingAlgorithms:
             Anew, Qnew, munew, bnew, gnew, x0new, Px0new = DecodingAlgorithms.PP_MStep(
                 dN, x_K_cur, W_K_cur, x0_buf[si], Px0_buf[si], ExpSums,
                 fitType, mu_buf[si], beta_buf[si], gamma_buf[si],
-                windowTimes, HkAll, PPEM_Constraints, MstepMethod, delta
+                windowTimes, HkAll, PPEM_Constraints, MstepMethod, delta,
+                _warn_glm=False,
             )
             A_buf[si_p1] = Anew
             Q_buf[si_p1] = Qnew
@@ -7160,6 +7194,7 @@ class DecodingAlgorithms:
         dN, x_K, W_K, x0, Px0, ExpectationSums, fitType,
         muhat, betahat, gammahat, windowTimes, HkAll,
         PPEM_Constraints=None, MstepMethod="NewtonRaphson", delta=0.001,
+        *, _warn_glm=True,
     ):
         """M-step for PP EM: update all model parameters.
 
@@ -7285,6 +7320,14 @@ class DecodingAlgorithms:
         muhat_new = muhat.copy()
 
         if MstepMethod == "GLM":
+            # FIX (M3, mirrors nSTAT PR #138 @ 3f91924): warn once per
+            # top-level call (not once per PP_EM iteration). PP_EM passes
+            # _warn_glm=False and issues its own single warning before the
+            # loop instead, so its internal PP_MStep calls do not re-warn
+            # every iteration; a direct PP_MStep(..., 'GLM') call (the
+            # default _warn_glm=True) still warns exactly once.
+            if _warn_glm:
+                warnings.warn(_glm_plugin_warning_message("PP_MStep"), GLMPlugInWarning, stacklevel=2)
             # MATLAB's GLM M-step (repaired: written to the returned variables,
             # coefficients mapped by label, keep-previous for unestimable ones,
             # delta time base, scoped warnings) -- see _em_glm_mstep.
