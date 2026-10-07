@@ -26,7 +26,7 @@ REPO_ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
         docs docs-strict docs-open refresh-intersphinx-inv \
         diff-matlab readme-check helpfile-check docs-snippet-check freshness-check \
         format lint typecheck \
-        version-check sanity clean release-check \
+        version-check sanity clean release-check ci-green-check \
         ci-local drift-check \
         parity-check parity-check-quick \
         perf-check perf-check-full perf-check-capture
@@ -173,7 +173,10 @@ sanity:  ## Quick "is the package importable + entry points wired?" check.
 	@$(PY) -c "from nstat.install import main; print('nstat-install entry point OK')"
 	@$(PY) -c "from nstat.paper_examples import main; print('nstat-paper-examples entry point OK')"
 
-release-check: version-check freshness-check test docs-strict regen notebooks-check  ## Pre-release verification gauntlet.
+ci-green-check:  ## Confirm the newest ci.yml run for HEAD's tree concluded success (read-only gh calls; never dispatches).
+	$(PY) tools/check_ci_green.py
+
+release-check: ci-green-check version-check freshness-check test docs-strict regen notebooks-check  ## Pre-release verification gauntlet.
 	@echo "Release check passed — ready to tag."
 
 # --- local CI mirror -------------------------------------------------
