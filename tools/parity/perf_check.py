@@ -48,8 +48,8 @@ Constraints / design notes
 - Inputs use ``np.random.default_rng(42)`` in Python and ``rng(42)`` in
   MATLAB so the *timed operations* are equivalent and reproducible.
 - This script does not contact the GitHub-hosted MATLAB repo.  It uses
-  the local checkout at ``$NSTAT_MATLAB_PATH`` (default
-  ``/Users/iahncajigas/projects/nstat``) read-only — independence rule.
+  the local checkout at ``$NSTAT_MATLAB_PATH`` (default: a sibling
+  ``nstat`` checkout next to this repo) read-only — independence rule.
 """
 from __future__ import annotations
 
@@ -81,7 +81,11 @@ REPO_ROOT = _REPO_ROOT_FOR_IMPORT
 BASELINE_PATH = REPO_ROOT / "parity" / "performance_baseline.yml"
 
 # Default discovery for the local MATLAB checkout — matches diff_against_matlab.py.
-_DEFAULT_MATLAB_REPO = os.environ.get("NSTAT_MATLAB_PATH", "/Users/iahncajigas/projects/nstat")
+# $NSTAT_MATLAB_PATH, else the sibling-checkout convention; never a hardcoded
+# developer-machine path.
+_DEFAULT_MATLAB_REPO = os.environ.get(
+    "NSTAT_MATLAB_PATH", str(REPO_ROOT.parent / "nstat")
+)
 _DEFAULT_MATLAB_BIN = os.environ.get("MATLAB_BIN", "/opt/homebrew/bin/matlab")
 
 # ---------------------------------------------------------------------------

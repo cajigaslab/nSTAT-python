@@ -73,14 +73,29 @@ def _load_grayscale(path: Path) -> np.ndarray | None:
     return np.asarray(img, dtype=np.float64) / 255.0
 
 
-def _compare_pair(matlab_path: Path, python_path: Path) -> tuple[float | None, str | None]:
+def _display_path(path: Path, root: Path) -> str:
+    """Render ``path`` relative to ``root`` for messages that get committed.
+
+    Falls back to the bare filename if ``path`` isn't under ``root`` (e.g. a
+    MATLAB checkout living outside this repo) so no local absolute path ever
+    lands in a tracked artifact.
+    """
+    try:
+        return str(path.relative_to(root))
+    except ValueError:
+        return path.name
+
+
+def _compare_pair(
+    matlab_path: Path, python_path: Path, *, matlab_root: Path
+) -> tuple[float | None, str | None]:
     """Return ``(ssim_score, error_msg)``.  ``ssim_score`` is None on error."""
     m = _load_grayscale(matlab_path)
     if m is None:
-        return None, f"MATLAB PNG missing at {matlab_path}"
+        return None, f"MATLAB PNG missing at {_display_path(matlab_path, matlab_root)}"
     p = _load_grayscale(python_path)
     if p is None:
-        return None, f"Python PNG missing at {python_path}"
+        return None, f"Python PNG missing at {_display_path(python_path, REPO_ROOT)}"
     score = float(ssim(m, p, data_range=1.0))
     return score, None
 
@@ -212,7 +227,7 @@ def main(argv: list[str] | None = None) -> int:
             continue
         m_path = _resolve_matlab_path(entry["matlab_png"], matlab_root)
         p_path = _resolve_python_path(entry["python_png"])
-        score, err = _compare_pair(m_path, p_path)
+        score, err = _compare_pair(m_path, p_path, matlab_root=matlab_root)
         if score is None:
             result["ssim"] = None
             result["passed"] = False

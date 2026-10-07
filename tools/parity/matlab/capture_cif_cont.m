@@ -21,10 +21,13 @@ function capture_cif_cont()
 % Reproduces: tests/parity/fixtures/matlab_gold/cif_cont_lambda.mat
 %
 % MATLAB nSTAT repo (which holds the .slx) is resolved from NSTAT_MATLAB_PATH,
-% defaulting to /Users/iahncajigas/projects/nstat.
+% defaulting to a sibling `nstat` checkout next to this repo.
 
 matlabRepo = getenv('NSTAT_MATLAB_PATH');
-if isempty(matlabRepo); matlabRepo = '/Users/iahncajigas/projects/nstat'; end
+if isempty(matlabRepo)
+    here0 = fileparts(mfilename('fullpath'));
+    matlabRepo = fullfile(here0, '..', '..', '..', '..', 'nstat');
+end
 here = fileparts(mfilename('fullpath'));
 outMat = fullfile(here, '..', '..', '..', 'tests', 'parity', 'fixtures', ...
                   'matlab_gold', 'cif_cont_lambda.mat');

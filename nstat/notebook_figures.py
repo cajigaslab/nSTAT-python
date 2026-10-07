@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import warnings
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -366,7 +367,19 @@ class FigureTracker:
         if self._active_fig is None:
             return
         out = self._topic_dir() / f"fig_{self.count:03d}.png"
-        self._active_fig.tight_layout()
+        with warnings.catch_warnings():
+            # Some figures (colorbars, uneven GridSpecs) are legitimately
+            # "not compatible with tight_layout" -- benign here since we
+            # call it unconditionally as a best-effort spacing pass. Left
+            # unsuppressed, the default warning format embeds this *module's*
+            # absolute source path in notebook cell output (a committed-
+            # artifact path leak caught by tests/test_no_local_paths.py).
+            warnings.filterwarnings(
+                "ignore",
+                message="This figure includes Axes.*not compatible with tight_layout",
+                category=UserWarning,
+            )
+            self._active_fig.tight_layout()
         self._active_fig.savefig(out, dpi=180)
         self._display_inline(self._active_fig)
         plt.close(self._active_fig)

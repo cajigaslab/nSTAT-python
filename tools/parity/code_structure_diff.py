@@ -80,8 +80,11 @@ IN_SCOPE_TOPICS: tuple[str, ...] = (
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+# Default: $NSTAT_MATLAB_PATH, else the sibling checkout convention
+# (cajigaslab/nSTAT cloned next to this repo) -- never a hardcoded
+# developer-machine path (see CLAUDE.md "local absolute paths" guard).
 DEFAULT_MATLAB_REPO = Path(
-    os.environ.get("NSTAT_MATLAB_PATH", "/Users/iahncajigas/projects/nstat")
+    os.environ.get("NSTAT_MATLAB_PATH", str(REPO_ROOT.parent / "nstat"))
 )
 OUTPUT_DIR = REPO_ROOT / ".parity-review"
 EXEMPTIONS_PATH = REPO_ROOT / "parity" / "code_structure_exemptions.yml"

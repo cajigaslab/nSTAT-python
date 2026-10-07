@@ -20,13 +20,13 @@ SPHINX    ?= $(PY) -m sphinx
 REPO_ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
 
 .PHONY: help install test test-smoke test-fast test-datasets test-no-paper \
-        test-slow test-matlab test-quick numerical-drift-check \
+        test-slow test-matlab test-quick numerical-drift-check notebooks-check \
         regen regen-gallery regen-parity regen-figures regen-notebook-fidelity \
         regen-notebook-galleries regen-visual-parity \
         docs docs-strict docs-open refresh-intersphinx-inv \
         diff-matlab readme-check helpfile-check docs-snippet-check freshness-check \
         format lint typecheck \
-        version-check sanity clean release-check \
+        version-check sanity clean release-check ci-green-check \
         ci-local drift-check \
         parity-check parity-check-quick \
         perf-check perf-check-full perf-check-capture
@@ -72,6 +72,10 @@ test-quick:  ## Everything except slow/matlab-marked tests (opt-in fast loop; `m
 
 numerical-drift-check:  ## Re-evaluate parity/numerical_drift_spec.yml; exit 1 on any drift.
 	$(PY) tools/parity/numerical_drift.py --spec parity/numerical_drift_spec.yml --fail-on-drift
+
+notebooks-check:  ## Execute the parity_core notebook group with deprecations-as-errors; FAILS if the dataset isn't installed (no silent skip). Isolated: installs a temporary kernelspec under mktemp, never touches ~/Library/Jupyter/kernels, never pip-installs.
+	bash tools/notebooks_check.sh $(PY) --group parity_core --timeout 900 \
+		--require-dataset --warnings-as-errors
 
 # --- regenerated artifacts ------------------------------------------
 
@@ -166,7 +170,10 @@ sanity:  ## Quick "is the package importable + entry points wired?" check.
 	@$(PY) -c "from nstat.install import main; print('nstat-install entry point OK')"
 	@$(PY) -c "from nstat.paper_examples import main; print('nstat-paper-examples entry point OK')"
 
-release-check: version-check freshness-check test docs-strict regen  ## Pre-release verification gauntlet.
+ci-green-check:  ## Confirm the newest ci.yml run for HEAD's tree concluded success (read-only gh calls; never dispatches).
+	$(PY) tools/check_ci_green.py
+
+release-check: ci-green-check version-check freshness-check test docs-strict regen notebooks-check  ## Pre-release verification gauntlet.
 	@echo "Release check passed — ready to tag."
 
 # --- local CI mirror -------------------------------------------------
@@ -242,10 +249,10 @@ parity-check-quick:  ## Composite + SSIM only against current gallery state (~30
 # the 5x parity ceiling. See docs/parity/runbook.md "Performance parity"
 # for the five paths, the targets, and the workflow when ratios regress.
 #
-# These targets are NOT run by ci-local — the MATLAB side needs the
-# local /opt/homebrew/bin/matlab + the nSTAT checkout at
-# $NSTAT_MATLAB_PATH (default /Users/iahncajigas/projects/nstat). For
-# CI-side validation see tests/test_performance_parity.py (schema only).
+# These targets are NOT run by ci-local — the MATLAB side needs a local
+# matlab binary + the nSTAT checkout at $NSTAT_MATLAB_PATH (default: a
+# sibling `nstat` checkout next to this repo). For CI-side validation see
+# tests/test_performance_parity.py (schema only).
 
 perf-check:  ## Time the 5 hot paths against MATLAB (~2-3 min, 3 runs/side; informational, never fails the make target).
 	-$(PY) tools/parity/perf_check.py --runs 3

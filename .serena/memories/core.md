@@ -42,8 +42,8 @@ import name `nstat`. Repo `cajigaslab/nstat-python` (GitHub UI shows
 - **Uncoupled from the MATLAB repo (hard rule):** no cross-repo runtime imports,
   no MATLAB-repo URLs/`matlab_source` paths in manifests/YAML. `parity/` and
   `compat/matlab/` record audit results / import aliases *within* this package
-  only. A local MATLAB checkout (`/Users/iahncajigas/projects/nstat`, override
-  via `NSTAT_MATLAB_PATH`) may be consulted as reference but never cited in
+  only. A local MATLAB checkout (set via `NSTAT_MATLAB_PATH`, default: a
+  sibling `nstat` checkout) may be consulted as reference but never cited in
   committed code/docs. `tests/parity/fixtures/matlab_gold/*.mat` is the sole
   canonical parity authority.
 - **Exact-mirror parity contract** (binding on every change): every MATLAB

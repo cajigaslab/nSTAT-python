@@ -199,3 +199,13 @@ markers = [
   "matlab: requires a local MATLAB engine + MATLAB nSTAT checkout (also skipif-guarded)",
   "timeout: per-test time limit in seconds (enforced only when pytest-timeout is installed; otherwise a no-op)",
 ]
+# 2026-10: Axes.boxplot(labels=...) was removed in matplotlib 3.11 and broke
+# CI silently (it warned for several releases first). Turn matplotlib
+# deprecation warnings into test failures here so the next removal is caught
+# in-process, before it reaches a removed-API break. This only covers code
+# that runs inside the pytest process -- it does NOT reach the paper-example
+# subprocess tests or notebook kernels (see tools/notebook_build/run_notebooks.py
+# --warnings-as-errors for the notebook-kernel equivalent).
+filterwarnings = [
+  "error::matplotlib.MatplotlibDeprecationWarning",
+]

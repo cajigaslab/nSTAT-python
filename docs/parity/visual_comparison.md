@@ -49,7 +49,7 @@ MATLAB PNGs are sourced from the sibling `cajigaslab/nSTAT` checkout when runnin
 | `DecodingExample` | DecodingExample DecodingExample_03 ↔ fig_003 | 0.822 | 0.82 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.826; threshold ~0.85×baseline. |
 | `DecodingExample` | DecodingExample DecodingExample_04 ↔ fig_004 | 0.562 | 0.51 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.531; threshold ~0.85×baseline. |
 | `DecodingExample` | DecodingExample DecodingExample_06 ↔ fig_006 | 0.498 | 0.49 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.513; threshold ~0.85×baseline. |
-| `DecodingExample` | DecodingExample DecodingExample_07 ↔ fig_007 | — | 0.57 | ? | Python PNG missing at /Users/iahncajigas/projects/nstat-python/docs/notebook_galleries/DecodingExample/fig_007.png |
+| `DecodingExample` | DecodingExample DecodingExample_07 ↔ fig_007 | — | 0.57 | ? | Python PNG missing at docs/notebook_galleries/DecodingExample/fig_007.png |
 | `DecodingExampleWithHist` | DecodingExampleWithHist DecodingExampleWithHist_02 ↔ fig_002 | 0.585 | 0.57 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.585; threshold ~0.85×baseline. |
 | `EventsExamples` | EventsExamples EventsExamples_02 ↔ fig_002 | 0.828 | 0.81 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.828; threshold ~0.85×baseline. |
 | `EventsExamples` | EventsExamples EventsExamples_03 ↔ fig_003 | 0.831 | 0.81 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.831; threshold ~0.85×baseline. |
@@ -62,7 +62,7 @@ MATLAB PNGs are sourced from the sibling `cajigaslab/nSTAT` checkout when runnin
 | `ExplicitStimulusWhiskerData` | ExplicitStimulusWhiskerData ExplicitStimulusWhiskerData_07 ↔ fig_007 | 0.628 | 0.74 | ✗ | Auto-added in v3 iter 11; baseline SSIM 0.757; threshold ~0.85×baseline. |
 | `ExplicitStimulusWhiskerData` | ExplicitStimulusWhiskerData ExplicitStimulusWhiskerData_08 ↔ fig_008 | 0.594 | 0.79 | ✗ | Auto-added in v3 iter 11; baseline SSIM 0.808; threshold ~0.85×baseline. |
 | `ExplicitStimulusWhiskerData` | ExplicitStimulusWhiskerData ExplicitStimulusWhiskerData_09 ↔ fig_009 | 0.592 | 0.59 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.614; threshold ~0.85×baseline. |
-| `ExplicitStimulusWhiskerData` | ExplicitStimulusWhiskerData ExplicitStimulusWhiskerData_10 ↔ fig_010 | — | 0.53 | ? | Python PNG missing at /Users/iahncajigas/projects/nstat-python/docs/notebook_galleries/ExplicitStimulusWhiskerData/fig_010.png |
+| `ExplicitStimulusWhiskerData` | ExplicitStimulusWhiskerData ExplicitStimulusWhiskerData_10 ↔ fig_010 | — | 0.53 | ? | Python PNG missing at docs/notebook_galleries/ExplicitStimulusWhiskerData/fig_010.png |
 | `HippocampalPlaceCellExample` | HippocampalPlaceCellExample HippocampalPlaceCellExample_01 ↔ fig_001 | 0.508 | 0.44 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.457; threshold ~0.85×baseline. |
 | `HippocampalPlaceCellExample` | HippocampalPlaceCellExample HippocampalPlaceCellExample_02 ↔ fig_002 | 0.679 | 0.64 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.729; threshold ~0.85×baseline. |
 | `HippocampalPlaceCellExample` | HippocampalPlaceCellExample HippocampalPlaceCellExample_03 ↔ fig_003 | 0.693 | 0.66 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.739; threshold ~0.85×baseline. |
@@ -93,7 +93,7 @@ MATLAB PNGs are sourced from the sibling `cajigaslab/nSTAT` checkout when runnin
 | `PPThinning` | PPThinning PPThinning_01 ↔ fig_001 | 0.392 | 0.50 | ✗ | Auto-added in v3 iter 11; baseline SSIM 0.532; threshold ~0.85×baseline. |
 | `PPThinning` | PPThinning PPThinning_02 ↔ fig_002 | 0.307 | 0.26 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.304; threshold ~0.85×baseline. |
 | `PPThinning` | PPThinning PPThinning_03 ↔ fig_003 | 0.251 | 0.31 | ✗ | Auto-added in v3 iter 11; baseline SSIM 0.309; threshold ~0.85×baseline. |
-| `PPThinning` | PPThinning PPThinning_04 ↔ fig_004 | — | 0.31 | ? | Python PNG missing at /Users/iahncajigas/projects/nstat-python/docs/notebook_galleries/PPThinning/fig_004.png |
+| `PPThinning` | PPThinning PPThinning_04 ↔ fig_004 | — | 0.31 | ? | Python PNG missing at docs/notebook_galleries/PPThinning/fig_004.png |
 | `PSTHEstimation` | PSTHEstimation PSTHEstimation_02 ↔ fig_002 | 0.766 | 0.75 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.766; threshold ~0.85×baseline. |
 | `SignalObjExamples` | SignalObjExamples SignalObjExamples_02 ↔ fig_002 | 0.372 | 0.37 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.393; threshold ~0.85×baseline. |
 | `SignalObjExamples` | SignalObjExamples SignalObjExamples_03 ↔ fig_003 | 0.442 | 0.44 | ✓ | Auto-added in v3 iter 11; baseline SSIM 0.465; threshold ~0.85×baseline. |

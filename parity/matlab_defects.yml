@@ -1715,7 +1715,7 @@ entries:
     pre-F8/F10 SE and IC bugs); and `IC`'s `R` parameter-count branch tested `QhatDiag`/`QhatIsotropic` instead of
     `RhatDiag`/`RhatIsotropic` (F11 class).  H1 WAS present in pre-fix MATLAB `KF_EM.m`: `N/2*(Rhat)\em(:,m)*el(:,l)'/(Rhat)`
     (and the four analogous `Qhat`/`Px0hat` sites) parses as `((N/2)*Rhat)^-1 * em*el' / Rhat`, not the intended
-    `(N/2) * Rhat^-1 * em*el' * Rhat^-1`; confirmed via `git -C /Users/iahncajigas/projects/nstat diff 08eb128 d2a8c85
+    `(N/2) * Rhat^-1 * em*el' * Rhat^-1`; confirmed via `git -C $NSTAT_MATLAB_PATH diff 08eb128 d2a8c85
     -- +nstat/+decoding/KF_EM.m`, which shows the pre-fix unparenthesised form at all 5 sites and #138's
     `5b942b3` adding the parentheses.
   correct_behavior: 'As F9 / G1 / H1 / F11 / #136 (lower factor; parenthesised information blocks; E-step
