@@ -8,10 +8,14 @@ machine paths leaked into several *generated* artifacts
 ``git grep -I -E "/Users/[a-z]|/private/tmp/|scratchpad"`` found ~35 hits.
 
 This test scans every tracked text file for absolute user/tmp paths and dev
-scratch markers. For Jupyter notebooks it scans only cell *source* — cell
-*output* legitimately varies per machine (e.g. a printed dataset path) and
-regenerates on every execution, so it is not a "leak" in the sense this
-guard cares about.
+scratch markers, including Jupyter notebook cell *outputs* (not just
+*source*) — a committed output can leak a path just as easily as source
+does, as `notebooks/nSTATPaperExamples.ipynb` did (a printed dataset-root
+dict, and a matplotlib warning whose default formatting embeds the
+triggering module's absolute path). Fix the underlying cause (print a
+relative/short value; suppress or relocate the warning) and re-execute the
+notebook through the repo's execution path so the committed output is
+clean, rather than exempting outputs from this guard.
 
 Fix leaks at the source, never here:
   - hand-edited file -> generic wording / an env-var name
@@ -85,18 +89,43 @@ def _is_binary(path: Path) -> bool:
     return b"\x00" in chunk
 
 
+def _as_text(value: object) -> str:
+    if isinstance(value, list):
+        return "".join(str(item) for item in value)
+    if value is None:
+        return ""
+    return str(value)
+
+
 def _notebook_source_hits(path: Path) -> list[str]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
         return []
     hits: list[str] = []
-    for cell in payload.get("cells", []):
-        source = cell.get("source", "")
-        text = "".join(source) if isinstance(source, list) else str(source)
-        for lineno, line in enumerate(text.splitlines(), start=1):
+    for ci, cell in enumerate(payload.get("cells", [])):
+        source_text = _as_text(cell.get("source", ""))
+        for lineno, line in enumerate(source_text.splitlines(), start=1):
             if _LOCAL_PATH_RE.search(line):
-                hits.append(f"cell source line {lineno}: {line.strip()[:160]}")
+                hits.append(f"cell {ci} source line {lineno}: {line.strip()[:160]}")
+        for oi, output in enumerate(cell.get("outputs", []) or []):
+            texts = [_as_text(output.get("text"))]
+            data = output.get("data")
+            if isinstance(data, dict):
+                for key in ("text/plain", "text/html"):
+                    if key in data:
+                        texts.append(_as_text(data[key]))
+            ename = output.get("ename")
+            if ename:
+                texts.append(_as_text(ename))
+            texts.append(_as_text(output.get("evalue")))
+            texts.append(_as_text(output.get("traceback")))
+            for text in texts:
+                for lineno, line in enumerate(text.splitlines(), start=1):
+                    if _LOCAL_PATH_RE.search(line):
+                        hits.append(
+                            f"cell {ci} output {oi} line {lineno}: {line.strip()[:160]}"
+                        )
     return hits
 
 
