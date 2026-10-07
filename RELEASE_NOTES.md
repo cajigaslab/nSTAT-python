@@ -12,11 +12,13 @@ cycle, closing gaps that no local gate had caught:
   `$NSTAT_MATLAB_PATH` / sibling-checkout defaults in `tools/parity/*.py`
   and the MATLAB capture scripts, and generic wording elsewhere.
 - `pyproject.toml`'s `[tool.pytest.ini_options]` now turns
-  `matplotlib.MatplotlibDeprecationWarning` into a test error; a removed
-  matplotlib 3.11 API (`Axes.boxplot(labels=...)`) had broken CI silently
-  for several releases. `tools/notebook_build/run_notebooks.py` gained a
-  matching `--warnings-as-errors` flag that injects the same guard into
-  the notebook kernel (a plain `pytest` filter never reaches it).
+  `matplotlib.MatplotlibDeprecationWarning` into a test error, so a
+  deprecated matplotlib API is caught at the warning stage, before it
+  reaches a removal release and breaks as a hard error — as
+  `Axes.boxplot(labels=...)` did when matplotlib 3.11 removed it.
+  `tools/notebook_build/run_notebooks.py` gained a matching
+  `--warnings-as-errors` flag that injects the same guard into the
+  notebook kernel (a plain `pytest` filter never reaches it).
 - New `make notebooks-check` (`run_notebooks.py --group parity_core
   --require-dataset --warnings-as-errors`) and `make ci-green-check`
   (confirms the newest `ci.yml` run for `HEAD`'s tree concluded `success`,
