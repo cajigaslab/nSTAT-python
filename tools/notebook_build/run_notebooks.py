@@ -79,6 +79,16 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--kernel-name",
+        default="python3",
+        help=(
+            "Jupyter kernel name to execute notebooks with (default: python3). "
+            "Pass a dedicated name (e.g. nstat-check) when the caller installed "
+            "an isolated kernelspec rather than overwriting the user's own "
+            "'python3' kernel -- see `make notebooks-check`."
+        ),
+    )
+    parser.add_argument(
         "--warnings-as-errors",
         action="store_true",
         default=os.environ.get("NSTAT_NOTEBOOK_WARNINGS_AS_ERRORS", "").strip().lower()
@@ -141,7 +151,13 @@ _WARNINGS_AS_ERRORS_SOURCE = (
 )
 
 
-def execute_notebook(path: Path, timeout: int, *, warnings_as_errors: bool = False) -> None:
+def execute_notebook(
+    path: Path,
+    timeout: int,
+    *,
+    warnings_as_errors: bool = False,
+    kernel_name: str = "python3",
+) -> None:
     notebook = nbformat.read(path, as_version=4)
     if warnings_as_errors:
         # nbclient/ipykernel run in a separate process from this script, so a
@@ -153,7 +169,7 @@ def execute_notebook(path: Path, timeout: int, *, warnings_as_errors: bool = Fal
     client = NotebookClient(
         notebook,
         timeout=timeout,
-        kernel_name="python3",
+        kernel_name=kernel_name,
         resources={"metadata": {"path": str(path.parent)}},
     )
     client.execute()
@@ -217,6 +233,7 @@ def main() -> int:
                 target.path,
                 timeout=args.timeout,
                 warnings_as_errors=args.warnings_as_errors,
+                kernel_name=args.kernel_name,
             )
             if figure_contract is not None:
                 validate_notebook_figure_artifacts(

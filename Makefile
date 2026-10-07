@@ -73,11 +73,8 @@ test-quick:  ## Everything except slow/matlab-marked tests (opt-in fast loop; `m
 numerical-drift-check:  ## Re-evaluate parity/numerical_drift_spec.yml; exit 1 on any drift.
 	$(PY) tools/parity/numerical_drift.py --spec parity/numerical_drift_spec.yml --fail-on-drift
 
-notebooks-check:  ## Execute the parity_core notebook group with deprecations-as-errors; FAILS if the dataset isn't installed (no silent skip).
-	@echo "Note: registers \$$(PY) as the Jupyter 'python3' user kernelspec (same as ci.yml) — this replaces whatever that kernel name currently points to."
-	$(PIP) install -q ipykernel
-	$(PY) -m ipykernel install --user --name python3 --display-name "Python 3"
-	$(PY) tools/notebook_build/run_notebooks.py --group parity_core --timeout 900 \
+notebooks-check:  ## Execute the parity_core notebook group with deprecations-as-errors; FAILS if the dataset isn't installed (no silent skip). Isolated: installs a temporary kernelspec under mktemp, never touches ~/Library/Jupyter/kernels, never pip-installs.
+	bash tools/notebooks_check.sh $(PY) --group parity_core --timeout 900 \
 		--require-dataset --warnings-as-errors
 
 # --- regenerated artifacts ------------------------------------------
