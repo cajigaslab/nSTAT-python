@@ -20,7 +20,7 @@ SPHINX    ?= $(PY) -m sphinx
 REPO_ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
 
 .PHONY: help install test test-smoke test-fast test-datasets test-no-paper \
-        test-slow test-matlab test-quick numerical-drift-check \
+        test-slow test-matlab test-quick numerical-drift-check notebooks-check \
         regen regen-gallery regen-parity regen-figures regen-notebook-fidelity \
         regen-notebook-galleries regen-visual-parity \
         docs docs-strict docs-open refresh-intersphinx-inv \
@@ -72,6 +72,13 @@ test-quick:  ## Everything except slow/matlab-marked tests (opt-in fast loop; `m
 
 numerical-drift-check:  ## Re-evaluate parity/numerical_drift_spec.yml; exit 1 on any drift.
 	$(PY) tools/parity/numerical_drift.py --spec parity/numerical_drift_spec.yml --fail-on-drift
+
+notebooks-check:  ## Execute the parity_core notebook group with deprecations-as-errors; FAILS if the dataset isn't installed (no silent skip).
+	@echo "Note: registers \$$(PY) as the Jupyter 'python3' user kernelspec (same as ci.yml) — this replaces whatever that kernel name currently points to."
+	$(PIP) install -q ipykernel
+	$(PY) -m ipykernel install --user --name python3 --display-name "Python 3"
+	$(PY) tools/notebook_build/run_notebooks.py --group parity_core --timeout 900 \
+		--require-dataset --warnings-as-errors
 
 # --- regenerated artifacts ------------------------------------------
 
@@ -166,7 +173,7 @@ sanity:  ## Quick "is the package importable + entry points wired?" check.
 	@$(PY) -c "from nstat.install import main; print('nstat-install entry point OK')"
 	@$(PY) -c "from nstat.paper_examples import main; print('nstat-paper-examples entry point OK')"
 
-release-check: version-check freshness-check test docs-strict regen  ## Pre-release verification gauntlet.
+release-check: version-check freshness-check test docs-strict regen notebooks-check  ## Pre-release verification gauntlet.
 	@echo "Release check passed — ready to tag."
 
 # --- local CI mirror -------------------------------------------------

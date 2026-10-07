@@ -68,6 +68,17 @@ def parse_args() -> argparse.Namespace:
         help="Optional topic-group mapping file.",
     )
     parser.add_argument(
+        "--require-dataset",
+        action="store_true",
+        help=(
+            "Fail fast with an actionable message if the figshare paper "
+            "dataset is not installed, instead of letting dataset-dependent "
+            "notebook cells fail deep into a kernel run (or silently skip, "
+            "which is how HippocampalPlaceCellExample's broken cells 5-6 "
+            "went unnoticed for months)."
+        ),
+    )
+    parser.add_argument(
         "--warnings-as-errors",
         action="store_true",
         default=os.environ.get("NSTAT_NOTEBOOK_WARNINGS_AS_ERRORS", "").strip().lower()
@@ -148,8 +159,28 @@ def execute_notebook(path: Path, timeout: int, *, warnings_as_errors: bool = Fal
     client.execute()
 
 
+def _check_dataset_present() -> str | None:
+    """Return an actionable failure message, or None if the dataset is present."""
+    from nstat.data_manager import data_is_present, get_data_dir
+
+    data_dir = get_data_dir()
+    if data_is_present(data_dir):
+        return None
+    return (
+        f"Figshare paper dataset not found at {data_dir}.\n"
+        "Install it first:\n"
+        "  nstat-install --download-example-data always\n"
+        "or point NSTAT_DATA_DIR at an existing local copy."
+    )
+
+
 def main() -> int:
     args = parse_args()
+    if args.require_dataset:
+        message = _check_dataset_present()
+        if message is not None:
+            print(message, file=sys.stderr)
+            return 1
     os.environ.setdefault("OMP_NUM_THREADS", "1")
     os.environ.setdefault("MKL_NUM_THREADS", "1")
     os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
