@@ -22,6 +22,8 @@ Usage::
 """
 from __future__ import annotations
 
+import os
+
 import sys
 import time as _time
 from pathlib import Path
@@ -33,7 +35,9 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from nstat.data_manager import ensure_example_data
 
-MATLAB_NSTAT = Path("/Users/iahncajigas/Library/CloudStorage/Dropbox/Claude/nSTAT")
+MATLAB_NSTAT = Path(
+    os.environ.get("NSTAT_MATLAB_PATH", str(Path(__file__).resolve().parents[1].parent / "nstat"))
+)
 TOL = 1e-8
 
 

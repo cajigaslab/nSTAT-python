@@ -2,8 +2,8 @@
 
 Each test pins behaviour that would have been silently wrong before the
 fix.  When MATLAB-side ground truth is available the test cross-references
-``/Users/iahncajigas/projects/nstat`` (or whatever the canonical local
-MATLAB path is); otherwise it pins the documented Python contract.
+the local MATLAB checkout at ``$NSTAT_MATLAB_PATH``; otherwise it pins the
+documented Python contract.
 """
 from __future__ import annotations
 

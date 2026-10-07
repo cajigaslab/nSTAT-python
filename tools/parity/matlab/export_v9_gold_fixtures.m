@@ -42,8 +42,8 @@ function export_v9_gold_fixtures(repoRoot, matlabRepoRoot)
 %
 % USAGE
 % -----
-%   export_v9_gold_fixtures('/Users/iahncajigas/projects/nstat-python', ...
-%                           '/Users/iahncajigas/projects/nstat');
+%   export_v9_gold_fixtures('/path/to/nstat-python', ...
+%                           '/path/to/nstat');
 %
 % Each fixture's per-function header lists the saved field set expected by
 % the Python recipe in `tools/parity/numerical_drift.py` and a recipe

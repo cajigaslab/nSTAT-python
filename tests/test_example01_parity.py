@@ -10,14 +10,15 @@ Usage:
 """
 from __future__ import annotations
 
-import sys
+import os
 import time
 import textwrap
+from pathlib import Path
 
 import numpy as np
 
 # ── Python nSTAT imports ──────────────────────────────────────────────
-sys.path.insert(0, "/Users/iahncajigas/Library/CloudStorage/Dropbox/Claude/nSTAT-python")
+# (nstat is importable via the editable install; no sys.path surgery needed.)
 
 from nstat import (
     Analysis, ConfigColl, CovColl, nspikeTrain, nstColl, Trial, TrialConfig,
@@ -26,7 +27,9 @@ from nstat.core import _matlab_colon
 from nstat.signal import Covariate
 from nstat.data_manager import ensure_example_data
 
-NSTAT_MATLAB_PATH = "/Users/iahncajigas/Library/CloudStorage/Dropbox/Claude/nSTAT"
+NSTAT_MATLAB_PATH = os.environ.get(
+    "NSTAT_MATLAB_PATH", str(Path(__file__).resolve().parents[1].parent / "nstat")
+)
 
 # ── Tolerances ────────────────────────────────────────────────────────
 ATOL = 1e-8

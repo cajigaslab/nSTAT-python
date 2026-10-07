@@ -1,7 +1,8 @@
 # MATLAB nSTAT v1.4.0 audit — Python cross-reference
 
 **Date:** 2026-05-21
-**MATLAB audit source:** `/Users/iahncajigas/projects/nstat/AUDIT_REPORT.md`
+**MATLAB audit source:** `AUDIT_REPORT.md` in the MATLAB nSTAT checkout
+  (path set via `$NSTAT_MATLAB_PATH`)
   (2026-03-10 audit; 67 `% FIX:` tags across 8 files; refreshed through
   the May 2026 modernization waves)
 **Python audit source:** `AUDIT_REPORT.md` in this repo (2026-03-10

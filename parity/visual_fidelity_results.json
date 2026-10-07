@@ -420,7 +420,7 @@
       "python_png": "docs/notebook_galleries/DecodingExample/fig_007.png",
       "threshold": 0.57,
       "stochastic": false,
-      "notes": "Python PNG missing at /Users/iahncajigas/projects/nstat-python/docs/notebook_galleries/DecodingExample/fig_007.png",
+      "notes": "Python PNG missing at docs/notebook_galleries/DecodingExample/fig_007.png",
       "ssim": null,
       "passed": false
     },
@@ -563,7 +563,7 @@
       "python_png": "docs/notebook_galleries/ExplicitStimulusWhiskerData/fig_010.png",
       "threshold": 0.53,
       "stochastic": false,
-      "notes": "Python PNG missing at /Users/iahncajigas/projects/nstat-python/docs/notebook_galleries/ExplicitStimulusWhiskerData/fig_010.png",
+      "notes": "Python PNG missing at docs/notebook_galleries/ExplicitStimulusWhiskerData/fig_010.png",
       "ssim": null,
       "passed": false
     },
@@ -904,7 +904,7 @@
       "python_png": "docs/notebook_galleries/PPThinning/fig_004.png",
       "threshold": 0.31,
       "stochastic": false,
-      "notes": "Python PNG missing at /Users/iahncajigas/projects/nstat-python/docs/notebook_galleries/PPThinning/fig_004.png",
+      "notes": "Python PNG missing at docs/notebook_galleries/PPThinning/fig_004.png",
       "ssim": null,
       "passed": false
     },

@@ -242,10 +242,10 @@ parity-check-quick:  ## Composite + SSIM only against current gallery state (~30
 # the 5x parity ceiling. See docs/parity/runbook.md "Performance parity"
 # for the five paths, the targets, and the workflow when ratios regress.
 #
-# These targets are NOT run by ci-local — the MATLAB side needs the
-# local /opt/homebrew/bin/matlab + the nSTAT checkout at
-# $NSTAT_MATLAB_PATH (default /Users/iahncajigas/projects/nstat). For
-# CI-side validation see tests/test_performance_parity.py (schema only).
+# These targets are NOT run by ci-local — the MATLAB side needs a local
+# matlab binary + the nSTAT checkout at $NSTAT_MATLAB_PATH (default: a
+# sibling `nstat` checkout next to this repo). For CI-side validation see
+# tests/test_performance_parity.py (schema only).
 
 perf-check:  ## Time the 5 hot paths against MATLAB (~2-3 min, 3 runs/side; informational, never fails the make target).
 	-$(PY) tools/parity/perf_check.py --runs 3

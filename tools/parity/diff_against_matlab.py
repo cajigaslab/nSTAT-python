@@ -10,8 +10,8 @@ Usage
 What it does
 ------------
 1. Walks the root-level ``*.m`` files of the MATLAB nSTAT checkout (default:
-   ``$NSTAT_MATLAB_PATH`` or ``/Users/iahncajigas/projects/nstat`` as a
-   developer-machine fallback).
+   ``$NSTAT_MATLAB_PATH``, else a sibling ``nstat``/``nSTAT`` checkout next
+   to this repo).
 2. For each ``.m`` file, extracts:
    - the ``classdef <Name>`` declaration (if present), and
    - every ``function`` declaration (these become methods or free functions).
@@ -80,8 +80,6 @@ if str(_REPO_ROOT_FOR_IMPORT) not in sys.path:
 # ----------------------------------------------------------------------
 
 DEFAULT_MATLAB_PATHS = [
-    Path("/Users/iahncajigas/projects/nstat"),
-    Path.home() / "projects" / "nstat",
     Path("../nstat"),
     Path("../nSTAT"),
 ]

@@ -226,7 +226,9 @@ def run_self_test() -> int:
     import os
     import tempfile
 
-    matlab_root = Path(os.environ.get("NSTAT_MATLAB_PATH", "/Users/iahncajigas/projects/nstat"))
+    matlab_root = Path(
+        os.environ.get("NSTAT_MATLAB_PATH", str(Path(__file__).resolve().parents[2].parent / "nstat"))
+    )
     schematic_candidates = [
         matlab_root / "helpfiles" / "NetworkTutorial_06.png",
         Path("docs/notebook_galleries/NetworkTutorial/fig_006.png"),

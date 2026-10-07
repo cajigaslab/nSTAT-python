@@ -28,8 +28,8 @@ function export_v11_gold_fixtures(repoRoot, matlabRepoRoot)
 %
 % USAGE
 % -----
-%   export_v11_gold_fixtures('/Users/iahncajigas/projects/nstat-python', ...
-%                            '/Users/iahncajigas/projects/nstat');
+%   export_v11_gold_fixtures('/path/to/nstat-python', ...
+%                            '/path/to/nstat');
 %
 % v9 conventions inherited: rng(42) at the top of every fixture function,
 % small canonical dims (10-step, 2-cell, 2-state), per-fixture try/catch
