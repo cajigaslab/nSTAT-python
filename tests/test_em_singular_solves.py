@@ -27,6 +27,8 @@ from nstat.decoding_algorithms import (
 )
 from nstat.decoding.PPLFP import PPLFP
 
+from tests.linalg_fixtures import assert_exactly_singular, exactly_singular_gram
+
 
 # A 2x2 exactly singular matrix. em-newton-solve-reciprocal-pivot's own
 # example is the NEGATED matrix (-[1 1;1 1]\[1;2] == [-Inf; Inf]); checked
@@ -70,15 +72,23 @@ def test_matlab_inv_singular_gives_inf_not_raise() -> None:
 def _singular_mstep_problem(dx=2, C=3, nW=2, K=50, seed=7):
     """An M-step problem whose Sxkm1xkm1 is exactly singular on every BLAS.
 
-    The last state component is identically 0, so Sxkm1xkm1 has an exact
-    zero row and column and LU meets an exact zero pivot whatever the
-    LAPACK build.  (Identical columns gave a matrix that is rank-deficient
-    only up to rounding: Accelerate found an exact zero pivot, Linux
-    OpenBLAS a tiny nonzero one, and the solve then returned finite values.)
+    The last state component is identically 0 by construction (the same
+    recipe as ``exactly_singular_gram`` in tests/linalg_fixtures.py, inlined
+    here because ``x`` is also needed for the off-diagonal sums below), so
+    Sxkm1xkm1 has an exact zero row and column and LU meets an exact zero
+    pivot whatever the LAPACK build -- checked directly via
+    ``assert_exactly_singular`` rather than assumed. (The original version
+    of this fixture used identical columns, which gave a matrix that is
+    rank-deficient only up to rounding: Accelerate found an exact zero
+    pivot, Linux OpenBLAS a tiny nonzero one, and the solve then returned
+    finite values -- see the 2026-10 CI incident recorded in
+    CONTRIBUTING.md.)
     """
     rng = np.random.default_rng(seed)
     x = rng.standard_normal((dx, K))
-    x[-1, :] = 0.0  # exact zero row/column in x @ x.T
+    x[-1, :] = 0.0  # exact zero row/column in x @ x.T -- see module docstring
+    gram = x @ x.T
+    assert_exactly_singular(gram, zero_index=-1)
     mu = np.linspace(-2.5, -2.0, C)
     beta = 0.8 * rng.standard_normal((dx, C))
     gamma = np.zeros((nW, C))
@@ -89,7 +99,7 @@ def _singular_mstep_problem(dx=2, C=3, nW=2, K=50, seed=7):
     HkAll = _compute_history_terms(dN, 0.001, wt)
     W_K = np.tile((0.02 * np.eye(dx))[:, :, None], (1, 1, K))
     ES = dict(
-        Sxkm1xkm1=x @ x.T,  # exactly singular: zero last row/column
+        Sxkm1xkm1=gram,  # exactly singular: zero last row/column (asserted above)
         Sxkxkm1=x[:, 1:] @ x[:, :-1].T,
         Sxkm1xk=x[:, :-1] @ x[:, 1:].T,
         Sxkxk=x @ x.T,
@@ -132,3 +142,36 @@ def test_pplfp_mstep_singular_sxkm1xkm1_gives_non_finite_ahat_not_raise() -> Non
         )
     Ahat = result[0]
     assert np.any(~np.isfinite(Ahat)), Ahat
+
+
+# ---------------------------------------------------------------------------
+# Guard: tests/linalg_fixtures.py itself.
+#
+# These pin that exactly_singular_gram() really is singular by construction
+# (not by rounding), and that assert_exactly_singular() rejects the
+# original (pre-fix) identical-columns construction that this file used to
+# rely on -- the construction whose singularity was BLAS-dependent and
+# broke CI on Linux OpenBLAS while passing on macOS Accelerate.
+# ---------------------------------------------------------------------------
+
+
+def test_exactly_singular_gram_is_singular_by_construction() -> None:
+    rng = np.random.default_rng(11)
+    gram = exactly_singular_gram(3, 20, rng, zero_index=-1)
+    assert_exactly_singular(gram, zero_index=-1)  # must not raise
+    with pytest.raises(np.linalg.LinAlgError):
+        np.linalg.solve(gram, np.ones(3))
+
+
+def test_assert_exactly_singular_rejects_identical_columns_construction() -> None:
+    # The ORIGINAL (pre-fix) fixture: every column identical. Rank-deficient
+    # only up to rounding -- this is the exact construction that was
+    # BLAS-dependent (Accelerate: exact zero pivot; Linux OpenBLAS: tiny
+    # nonzero pivot). assert_exactly_singular must reject it structurally,
+    # without needing a second BLAS build to prove the point.
+    rng = np.random.default_rng(7)
+    v = rng.standard_normal(2)
+    x = np.tile(v[:, None], (1, 50))
+    gram = x @ x.T
+    with pytest.raises(AssertionError):
+        assert_exactly_singular(gram, zero_index=-1)
