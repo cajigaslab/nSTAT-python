@@ -1,5 +1,36 @@
 # Release Notes
 
+## Unreleased
+
+**Tooling / tests** — hardening added after the v0.6.0 / 2026-10 EM release
+cycle, closing gaps that no local gate had caught:
+
+- New `tests/test_no_local_paths.py` scans every tracked file (notebook
+  *source* only, not output) for local absolute paths and dev-scratch
+  markers. Fixed ~35 pre-existing leaks at their source: generator fixes in
+  `tools/parity/build_visual_comparison.py` and regenerated artifacts,
+  `$NSTAT_MATLAB_PATH` / sibling-checkout defaults in `tools/parity/*.py`
+  and the MATLAB capture scripts, and generic wording elsewhere.
+- `pyproject.toml`'s `[tool.pytest.ini_options]` now turns
+  `matplotlib.MatplotlibDeprecationWarning` into a test error; a removed
+  matplotlib 3.11 API (`Axes.boxplot(labels=...)`) had broken CI silently
+  for several releases. `tools/notebook_build/run_notebooks.py` gained a
+  matching `--warnings-as-errors` flag that injects the same guard into
+  the notebook kernel (a plain `pytest` filter never reaches it).
+- New `make notebooks-check` (`run_notebooks.py --group parity_core
+  --require-dataset --warnings-as-errors`) and `make ci-green-check`
+  (confirms the newest `ci.yml` run for `HEAD`'s tree concluded `success`,
+  via read-only `gh` calls) are now part of `make release-check`.
+  `notebooks-check` fails loudly if the figshare dataset isn't installed,
+  instead of a notebook group going unexercised for months
+  (`HippocampalPlaceCellExample` cells 5-6, broken since June).
+- New `tests/linalg_fixtures.py` (`exactly_singular_gram`,
+  `assert_exactly_singular`) builds "should be singular" test matrices by
+  structural construction (an exact zero row/column) instead of relying on
+  floating-point cancellation, which is BLAS-dependent — the EM singular
+  test's identical-columns construction passed on Accelerate and failed on
+  Linux OpenBLAS. See `CONTRIBUTING.md`.
+
 ## v0.6.0 — 2026-10-06
 
 First release since v0.5.7. It contains the point-process and Kalman-filter EM repairs that mirror the repaired MATLAB nSTAT (PRs #135, #137, #138), the parity clean-up, and the spatiotemporal `extras` work that was code-complete on 2026-07-03 but not released then (last subsection). **Breaking changes are listed under each EM heading.**
