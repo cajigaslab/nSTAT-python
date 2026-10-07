@@ -67,6 +67,19 @@ def parse_args() -> argparse.Namespace:
         default=Path(__file__).resolve().parent / "topic_groups.yml",
         help="Optional topic-group mapping file.",
     )
+    parser.add_argument(
+        "--warnings-as-errors",
+        action="store_true",
+        default=os.environ.get("NSTAT_NOTEBOOK_WARNINGS_AS_ERRORS", "").strip().lower()
+        in ("1", "true", "yes"),
+        help=(
+            "Turn matplotlib.MatplotlibDeprecationWarning into an error inside "
+            "the notebook kernel (also settable via "
+            "NSTAT_NOTEBOOK_WARNINGS_AS_ERRORS=1). Catches a removed-API break "
+            "before it ships, the way a plain pytest filterwarnings never can "
+            "for code that only runs inside a notebook kernel."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -105,8 +118,27 @@ def select_targets(targets: list[NotebookTarget], group: str) -> list[NotebookTa
     return [target for target in targets if target.run_group == "smoke"]
 
 
-def execute_notebook(path: Path, timeout: int) -> None:
+_WARNINGS_AS_ERRORS_SOURCE = (
+    "import warnings as _nstat_warnings\n"
+    "try:\n"
+    "    from matplotlib import MatplotlibDeprecationWarning as _MplDeprecationWarning\n"
+    "except ImportError:\n"
+    "    from matplotlib._api.deprecation import (\n"
+    "        MatplotlibDeprecationWarning as _MplDeprecationWarning,\n"
+    "    )\n"
+    "_nstat_warnings.filterwarnings('error', category=_MplDeprecationWarning)\n"
+)
+
+
+def execute_notebook(path: Path, timeout: int, *, warnings_as_errors: bool = False) -> None:
     notebook = nbformat.read(path, as_version=4)
+    if warnings_as_errors:
+        # nbclient/ipykernel run in a separate process from this script, so a
+        # warnings.filterwarnings() call here never reaches the kernel.
+        # Inject it as the notebook's own first cell instead (in-memory only
+        # — the file on disk is never modified).
+        guard_cell = nbformat.v4.new_code_cell(source=_WARNINGS_AS_ERRORS_SOURCE)
+        notebook.cells.insert(0, guard_cell)
     client = NotebookClient(
         notebook,
         timeout=timeout,
@@ -150,7 +182,11 @@ def main() -> int:
         try:
             if figure_contract is not None:
                 reset_notebook_figure_artifacts(args.repo_root, figure_contract)
-            execute_notebook(target.path, timeout=args.timeout)
+            execute_notebook(
+                target.path,
+                timeout=args.timeout,
+                warnings_as_errors=args.warnings_as_errors,
+            )
             if figure_contract is not None:
                 validate_notebook_figure_artifacts(
                     args.repo_root,
