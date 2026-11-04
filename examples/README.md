@@ -20,6 +20,12 @@ python examples/tutorials/network_coupling.py --save-fig out.png
 
 # Model comparison: nested GLMs by AIC/BIC + KS, with coefficient 95% CIs
 python examples/tutorials/model_comparison.py --save-fig out.png
+
+# Clinical microelectrode walkthrough: encode -> KS check -> beta-band spectrum -> PPAF phase decode
+python examples/tutorials/clinical_microelectrode_walkthrough.py --save-fig out.png
+
+# Place-cell capstone on real hippocampal data: encode -> check -> decode
+python examples/tutorials/place_cell_walkthrough.py --save-fig out.png
 ```
 
 - **`examples/tutorials/Tutorial_MicroelectrodeToDecoding.ipynb`** — a notebook
@@ -29,8 +35,9 @@ python examples/tutorials/model_comparison.py --save-fig out.png
 
 ## Paper Examples (Self-Contained)
 
-Five self-contained scripts mirroring the MATLAB paper examples. Each
-generates publication-quality figures and supports `--export-figures`.
+Eight self-contained scripts mirroring the MATLAB paper examples (01-05)
+plus follow-on spatial/spatiotemporal studies (06-08). Each generates
+publication-quality figures and supports `--export-figures`.
 
 ```bash
 python examples/paper/example01_mepsc_poisson.py --export-figures
@@ -38,6 +45,9 @@ python examples/paper/example02_whisker_stimulus_thalamus.py --export-figures
 python examples/paper/example03_psth_and_ssglm.py --export-figures
 python examples/paper/example04_place_cells_continuous_stimulus.py --export-figures
 python examples/paper/example05_decoding_ppaf_pphf.py --export-figures
+python examples/paper/example06_place_fields_glm_basis.py --export-figures
+python examples/paper/example07_spatiotemporal_hawkes_waves.py --export-figures
+python examples/paper/example08_real_place_cells.py --export-figures
 ```
 
 | Example | Focus | Paper Section |
@@ -47,6 +57,9 @@ python examples/paper/example05_decoding_ppaf_pphf.py --export-figures
 | 03 | PSTH and SSGLM across-trial dynamics | 2.3.3-2.3.4 |
 | 04 | Place-cell receptive fields (Gaussian vs Zernike) | 2.3.5 |
 | 05 | PPAF and hybrid filter decoding | 2.5-2.6 |
+| 06 | Tensor-product B-spline Poisson GLM recovery of a known 2-D place field vs an LGCP | — |
+| 07 | Bartlett spectrum + wave-peak detection of a planar wave in a multivariate Hawkes triggering matrix | — |
+| 08 | B-spline Poisson GLM on real hippocampal place cells, checked against the spatial global-rank envelope | — |
 
 ## Basic Examples
 
@@ -66,6 +79,6 @@ python examples/readme_examples/example3_nstcoll_raster_from_example2.py
 
 ## Jupyter Notebooks
 
-All 29 class-tutorial and data-analysis notebooks are in `notebooks/`.
+All 35 class-tutorial and data-analysis notebooks are in `notebooks/`.
 They mirror the MATLAB helpfile examples one-to-one. See
 [docs/Examples.md](../docs/Examples.md) for the full index.

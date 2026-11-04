@@ -31,7 +31,7 @@
 >
 > 🛠 **Other ways in:** the runnable [`00_getting_started.ipynb`](notebooks/00_getting_started.ipynb)
 > notebook; six end-to-end tutorial scripts in [`examples/tutorials/`](examples/tutorials/);
-> the five paper examples in [`examples/paper/`](examples/paper/); and the
+> the eight paper examples in [`examples/paper/`](examples/paper/); and the
 > reference notebooks in [`notebooks/`](notebooks/).
 
 `nSTAT-python` is the Python port of the
@@ -164,8 +164,9 @@ demonstrate it.
 
 ## Paper examples
 
-The five canonical examples from Cajigas, Malik & Brown (2012), each
-reproduced as a self-contained Python script with a generated figure gallery.
+Eight example scripts — five from the original Cajigas, Malik & Brown (2012)
+paper (01–05) and three extended analyses (06–08) — each reproduced as a
+self-contained Python script with a generated figure gallery.
 
 Regenerate the gallery metadata after editing any paper-example script:
 
@@ -214,7 +215,11 @@ group: `latents`, `numba`, `clusterless`, `spatial-gp`, `hawkes`, `dpp` and
 |---|---|---|---|
 | `nstat.extras.em.dynamax_bridge` | Dynamax-trained (JAX) linear-Gaussian / point-process / hybrid state-space EM — an opt-in alternative to the native MATLAB-mirror `DecodingAlgorithms.KF_EM` / `PP_EM` / `PPLFP_EM` (`mPPCO_EM`). Held-out predictive log-likelihood + multi-restart selection (canonical-gauge identifiability). | [em_dynamax](docs/extras/em_dynamax.md) | `[dynamax]` (pulls JAX ~200 MB) |
 | `nstat.extras.decoding.clusterless_bridge` | Clusterless marked point-process decoding (no spike sorting) + trajectory-type classification — the modern descendant of nSTAT's PPAF / PPHF filters ([Denovellis et al. 2021](https://pubmed.ncbi.nlm.nih.gov/34570699/)). | [decoding_clusterless](docs/extras/decoding_clusterless.md) | `[clusterless]` (pulls JAX ~200 MB) |
+| `nstat.extras.decoding.place_field_decoder` | One-call 2-D place-cell encoding (tensor-product B-spline Poisson GLM) + `PPDecodeFilter*` decoding wrapper around the `example08` pipeline. | [decoding_place_field](docs/extras/decoding_place_field.md) | core: none |
 | `nstat.extras.spatial` | Spatial / spatiotemporal point processes: LGCP rate maps with credible bands (Laplace), inhomogeneous second-order goodness-of-fit (`g`/`K`/`L`, F/G/J, global-rank envelope), and the discrete-time-rescaling KS correction ([Haslinger-Pipa-Brown 2010](https://pubmed.ncbi.nlm.nih.gov/20608868/)). Spatiotemporal tier: space-time kernel intensity + Kronecker-Laplace LGCP with credible bands, space-time inhomogeneous `K`/pair-correlation + global-rank envelope, space-time Hawkes/ETAS branching EM, LGCP-background Cox-Hawkes, and a modulated-renewal (conditional-ISI) CIF. Pure NumPy/SciPy core; optional Hawkes/DPP/GP bridges. | [spatial_point_processes](docs/extras/spatial_point_processes.md) | core: none; `[spatial-gp]` / `[hawkes]` / `[dpp]` (optional) |
+| `nstat.extras.latents.gpfa_bridge` | Gaussian-Process Factor Analysis for smooth low-dimensional latent trajectories from simultaneous spike trains, via [Elephant](https://elephant.readthedocs.io/en/latest/reference/gpfa.html) ([Yu et al. 2009](https://pubmed.ncbi.nlm.nih.gov/19357332/)). | [latents_gpfa](docs/extras/latents_gpfa.md) | `[latents]` |
+| `nstat.extras.continuous_cif` | Native Python port of the continuous-time CIF simulator (`PointProcessSimulationCont.slx`) — continuous stimulus/ensemble LTI filters + discretized self-history feedback. | [continuous_cif](docs/extras/continuous_cif.md) | core: none |
+| `nstat.extras.matlab_rng` | MATLAB-aligned Mersenne Twister RNG (`RandomState(MT19937)` seeded like MATLAB's `rng(N)`) for cross-language Monte Carlo reproducibility. | [matlab_rng](docs/extras/matlab_rng.md) | core: none |
 | `nstat.extras.interop.neo` | Vendor-format I/O via [Neo](https://github.com/NeuralEnsemble/python-neo) — Spike2 / NEX / Blackrock / Plexon / TDT / NWB. | [interop_neo](docs/extras/interop_neo.md) | `[neo]` |
 | `nstat.extras.interop.nwb` | BRAIN-Initiative NWB:N standard reader via [pynwb](https://github.com/NeurodataWithoutBorders/pynwb). | [interop_nwb](docs/extras/interop_nwb.md) | `[nwb]` |
 | `nstat.extras.interop.pynapple` | Time-series + epoch math via [pynapple](https://github.com/pynapple-org/pynapple), NWB-native. | [interop_pynapple](docs/extras/interop_pynapple.md) | `[pynapple]` |

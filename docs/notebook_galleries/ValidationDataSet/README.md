@@ -1,12 +1,12 @@
 # ValidationDataSet — figure gallery
 
 This page is the rendered figure output of
-[`notebooks/ValidationDataSet.ipynb`](../../notebooks/ValidationDataSet.ipynb).
+[`notebooks/ValidationDataSet.ipynb`](../../../notebooks/ValidationDataSet.ipynb).
 Each PNG is an output of the notebook's ``FigureTracker``; placeholder
 MATLAB-line annotations look like blank pages with code snippets and indicate the
 notebook is a MATLAB-helpfile port rather than a narrative example.
 
-- Source notebook: [`notebooks/ValidationDataSet.ipynb`](../../notebooks/ValidationDataSet.ipynb)
+- Source notebook: [`notebooks/ValidationDataSet.ipynb`](../../../notebooks/ValidationDataSet.ipynb)
 - Figures: 12 (12 with substantive plot content)
 
 ## Figures
