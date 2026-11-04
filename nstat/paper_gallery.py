@@ -120,8 +120,9 @@ def render_readme_examples_markdown(repo_root: Path | None = None) -> str:
     lines = [
         "## Paper examples",
         "",
-        "The five canonical examples from Cajigas, Malik & Brown (2012), each",
-        "reproduced as a self-contained Python script with a generated figure gallery.",
+        "Eight example scripts — five from the original Cajigas, Malik & Brown (2012)",
+        "paper (01–05) and three extended analyses (06–08) — each reproduced as a",
+        "self-contained Python script with a generated figure gallery.",
         "",
         "Regenerate the gallery metadata after editing any paper-example script:",
         "",

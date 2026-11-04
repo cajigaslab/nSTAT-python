@@ -31,7 +31,7 @@
 >
 > 🛠 **Other ways in:** the runnable [`00_getting_started.ipynb`](notebooks/00_getting_started.ipynb)
 > notebook; six end-to-end tutorial scripts in [`examples/tutorials/`](examples/tutorials/);
-> the five paper examples in [`examples/paper/`](examples/paper/); and the
+> the eight paper examples in [`examples/paper/`](examples/paper/); and the
 > reference notebooks in [`notebooks/`](notebooks/).
 
 `nSTAT-python` is the Python port of the
@@ -164,8 +164,9 @@ demonstrate it.
 
 ## Paper examples
 
-The five canonical examples from Cajigas, Malik & Brown (2012), each
-reproduced as a self-contained Python script with a generated figure gallery.
+Eight example scripts — five from the original Cajigas, Malik & Brown (2012)
+paper (01–05) and three extended analyses (06–08) — each reproduced as a
+self-contained Python script with a generated figure gallery.
 
 Regenerate the gallery metadata after editing any paper-example script:
 
