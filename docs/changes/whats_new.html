@@ -46,10 +46,15 @@
   </header>
 
   <div class="entry">
-    <div class="date">2026-07-03</div>
-    <h2><a href="https://github.com/cajigaslab/nSTAT-python/blob/main/RELEASE_NOTES.md#v060--2026-07-03">v0.6.0 — Spatiotemporal point processes</a>
-      <span class="tag flagship">extras / spatial</span></h2>
-    <p>Six new pure-NumPy/SciPy modules (21 new public symbols) extend
+    <div class="date">2026-10-06</div>
+    <h2><a href="https://github.com/cajigaslab/nSTAT-python/blob/main/RELEASE_NOTES.md#v060--2026-10-06">v0.6.0 — EM repairs + spatiotemporal point processes</a>
+      <span class="tag flagship">release</span></h2>
+    <p>The point-process and Kalman-filter EM routines (<code>PP_EM</code>,
+    <code>PPLFP_EM</code>, <code>mPPCO_*</code>, <code>KF_EM</code>) now
+    mirror the repaired MATLAB nSTAT (nSTAT PRs #135, #137, #138); breaking
+    changes are listed under each EM heading in the release notes.
+    <code>import nstat</code> is about 2.3&times; faster.</p>
+    <p>Also in this release: six new pure-NumPy/SciPy modules (21 new public symbols) extend
     <code>nstat.extras.spatial</code> from static to full space-time
     <code>(x, y, t)</code> point processes: space-time kernel intensity,
     Kronecker-Laplace LGCP with credible bands, space-time inhomogeneous
