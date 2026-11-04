@@ -126,3 +126,56 @@ def test_fitsummary_matlab_style_helpers_cover_ic_and_coeff_views() -> None:
     assert hasattr(ax4, "boxplot")
     assert restored.numNeurons == summary.numNeurons
     plt.close("all")
+
+
+class _CoeffStubSummary(FitSummary):
+    """FitSummary whose per-fit coefficient matrices are given directly.
+
+    Rows are neurons, columns follow ``uniqueCovLabels``.
+    """
+
+    def __init__(self, per_fit: list[np.ndarray], labels: list[str]) -> None:  # noqa: D107
+        self._per_fit = per_fit
+        self.uniqueCovLabels = labels
+        self.numResults = len(per_fit)
+        self.numNeurons = per_fit[0].shape[0]
+
+    def getCoeffs(self, fitNum: int = 0):
+        mat = self._per_fit[fitNum]
+        return mat, list(self.uniqueCovLabels), np.full_like(mat, np.nan)
+
+
+def test_fitsummary_hist_and_coeff_index_keep_labels_finite_in_any_fit_and_neuron() -> None:
+    """Mirror of cajigaslab/nSTAT@d37a07a (FitResSummary.getHistIndex).
+
+    MATLAB kept a label only if neuron 1 had it (``bAct(:,fitNum)`` on a 3-D
+    array).  The fix keeps a label that is finite for ANY requested fit and
+    ANY neuron.  Python already looked at every neuron, but only at the first
+    requested fit.
+    """
+    nan = np.nan
+    labels = ["constant", "stim", "[0,0.001]", "[0.001,0.002]"]
+    # fit 0: neuron 0 has no history and no stim; neuron 1 has the first window only.
+    fit0 = np.array([[0.1, nan, nan, nan],
+                     [0.2, nan, 1.4, nan]])
+    # fit 1: only neuron 1 has the second window and the stim term.
+    fit1 = np.array([[0.1, nan, nan, nan],
+                     [0.2, 0.5, nan, 1.3]])
+    summary = _CoeffStubSummary([fit0, fit1], labels)
+
+    # Any neuron (the MATLAB neuron-1 defect): neuron 1 alone keeps window 1.
+    assert summary.getHistIndex(0) == [2]
+    assert summary.getCoeffIndex(0) == [0]
+    # Any requested fit: the union over fits 0 and 1.
+    assert summary.getHistIndex([0, 1]) == [2, 3]
+    assert summary.getCoeffIndex([0, 1]) == [0, 1]
+    # Default = every fit.
+    assert summary.getHistIndex() == [2, 3]
+
+
+def test_fitsummary_hist_index_empty_when_no_history_is_finite() -> None:
+    nan = np.nan
+    labels = ["constant", "[0,0.001]"]
+    summary = _CoeffStubSummary([np.array([[0.1, nan], [0.2, nan]])], labels)
+    assert summary.getHistIndex() == []
+    assert summary.getCoeffIndex() == [0]

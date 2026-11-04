@@ -2476,20 +2476,36 @@ class FitSummary:
         """Return True if *label* looks like a history window term (e.g. ``[0.001,0.01]``)."""
         return bool(re.match(r"^\[", label))
 
+    def _finite_label_mask(self, fitNum: list[int]) -> tuple[list[str], np.ndarray]:
+        """Labels and a mask: True where ANY requested fit has a finite value for ANY neuron.
+
+        Mirrors the filter of MATLAB ``FitResSummary.getHistIndex`` after
+        cajigaslab/nSTAT@d37a07a (``any(any(~isnan(bAct(:,fitNum,:)),2),3)``),
+        which also matches ``getCoeffIndex``'s sum over ``fitNum`` and neurons.
+        """
+        labels = list(self.uniqueCovLabels)
+        finite = np.zeros(len(labels), dtype=bool)
+        for fit_num in fitNum:
+            coeff_mat, fit_labels, _ = self.getCoeffs(fit_num)
+            labels = list(fit_labels)
+            coeff_mat = np.asarray(coeff_mat, dtype=float)
+            if coeff_mat.ndim == 2 and coeff_mat.shape[1] == len(labels):
+                if finite.size != len(labels):
+                    finite = np.zeros(len(labels), dtype=bool)
+                finite |= np.any(np.isfinite(coeff_mat), axis=0)
+        if finite.size != len(labels):
+            finite = np.zeros(len(labels), dtype=bool)
+        return labels, finite
+
     def getCoeffIndex(self, fitNum: int | list[int] | None = None) -> list[int]:
         """Return 0-based indices into *uniqueCovLabels* that are NOT history terms."""
         if fitNum is None:
             fitNum = list(range(self.numResults))
         if isinstance(fitNum, int):
             fitNum = [fitNum]
-        coeff_mat, labels, _ = self.getCoeffs(fitNum[0])
+        labels, finite = self._finite_label_mask(fitNum)
         hist_set = set(self.getHistIndex(fitNum))
-        coeff_indices: list[int] = []
-        for idx, label in enumerate(labels):
-            if idx not in hist_set:
-                if np.any(np.isfinite(coeff_mat[:, idx])):
-                    coeff_indices.append(idx)
-        return coeff_indices
+        return [idx for idx in range(len(labels)) if idx not in hist_set and finite[idx]]
 
     def plotCoeffsWithoutHistory(self, fitNum: int | list[int] | None = None,
                                  plotSignificance: bool = True,
@@ -2505,14 +2521,8 @@ class FitSummary:
             fitNum = list(range(self.numResults))
         if isinstance(fitNum, int):
             fitNum = [fitNum]
-        coeff_mat, labels, _ = self.getCoeffs(fitNum[0])
-        hist_indices: list[int] = []
-        for idx, label in enumerate(labels):
-            if self._is_hist_label(label):
-                # Only include if at least one neuron has a non-NaN value
-                if np.any(np.isfinite(coeff_mat[:, idx])):
-                    hist_indices.append(idx)
-        return hist_indices
+        labels, finite = self._finite_label_mask(fitNum)
+        return [idx for idx, label in enumerate(labels) if self._is_hist_label(label) and finite[idx]]
 
     def getCoeffs(self, fitNum: int = 0):
         """Return ``(coeffMat, labels, seMat)`` aligned to unique labels."""
