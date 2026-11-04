@@ -1,5 +1,5 @@
 version: 1
-updated_utc: '2026-06-23T02:46:49Z'
+updated_utc: '2026-11-04T17:34:54Z'
 matlab_repo: cajigaslab/nSTAT@master
 tracked_files: 32
 hashes:
@@ -12,15 +12,15 @@ hashes:
   TrialConfig.m: 862ccda67f6848cf
   Trial.m: fe88667e60f9cdd8
   FitResult.m: 1aca2e8cf250c290
-  FitResSummary.m: a375465f4cb77682
+  FitResSummary.m: 7e8d860d641a6bac
   CIF.m: 46d1e297f2e3ed50
-  +nstat/+decoding/PPAF.m: a18ffb10e82da0f8
-  +nstat/+decoding/PPHF.m: 24322cf0ce7a3af1
-  +nstat/+decoding/PPLFP.m: 02bed59e080ec631
+  +nstat/+decoding/PPAF.m: 1190a8f96a742b63
+  +nstat/+decoding/PPHF.m: 9841f54ec493110b
+  +nstat/+decoding/PPLFP.m: 5507991df19bfe4f
   +nstat/+decoding/PPSS.m: null
   helpfiles/AnalysisExamples.m: 7234990cfb22ab84
   helpfiles/CovariateExamples.m: 5f8cfa18eebc2754
-  helpfiles/DecodingExample.m: e2f284d1d1c12b06
+  helpfiles/DecodingExample.m: 54c8e65df56ad1b7
   helpfiles/ExplicitStimulusWhiskerData.m: 3ad7c2773102cf8c
   helpfiles/HippocampalPlaceCellExample.m: 9b1c4611b1fc0365
   helpfiles/HybridFilterExample.m: e57970f515d60554
@@ -29,7 +29,7 @@ hashes:
   helpfiles/PPThinning.m: be698f63c47bf2a6
   helpfiles/PSTHEstimation.m: b847dd06dcfe950e
   helpfiles/SignalObjExamples.m: e66df009aa855483
-  helpfiles/StimulusDecode2D.m: 87386c1f33484a00
+  helpfiles/StimulusDecode2D.m: 7eba10a4407b68e4
   helpfiles/TrialExamples.m: bb3ec4403c22c472
   helpfiles/mEPSCAnalysis.m: 6c55b2304c368d5e
   helpfiles/nSTATPaperExamples.m: d928b1319764b580

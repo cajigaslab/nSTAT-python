@@ -285,7 +285,7 @@ entries:
   discovered: iter 14 / 2026-06-18
 - id: pplfp-em-n4-rhat-branch-mislabeled
   title: PPLFP_EM `n4` parameter-count branch uses Qhat constraints instead of Rhat
-  defect_class: Bug (fixed upstream, pending merge)
+  defect_class: Bug (fixed upstream)
   matlab_location: '`+nstat/+decoding/PPLFP.m:1936-1942` in `cajigaslab/nSTAT@2d86602`
     (function `PPLFP_EM`)'
   matlab_behavior: 'The middle branch of the `n4` (Rhat-parameter-count) cascade tests
@@ -317,8 +317,8 @@ entries:
   fixture_impact: No `.mat` gold fixture change yet (PPLFP_EM fixtures not regenerated
     by iter 29).
   discovered: iter 29 / 2026-06-18
-  upstream_status: fixed-upstream-pending-merge
-  resolved_in: nSTAT PR #135 (fix/pp-em @ 564c207, F11); nstat-python 48ebdc4
+  upstream_status: adopted-upstream
+  resolved_in: cajigaslab/nSTAT@422b4d1 (PR #135 merged 2026-10-06, fix/pp-em @ 564c207, F11); nstat-python 48ebdc4
   resolved_iter: EM track / 2026-10
   resolved_notes: 'Counts recovered from AIC / BIC: 16, 14, 14, 13 for (QhatDiag, RhatDiag, RhatIsotropic) = (1,0,0), (0,1,0), (1,1,0), (1,1,1), as in MATLAB''s F11 table.  Only IC was affected.'
 - id: pplfp-estep-fixture-missing
@@ -1538,7 +1538,7 @@ entries:
   upstream_status: filed
 - id: em-pr135-binomial-newton-and-information-signs
   title: 'EM binomial blocks: Newton beta Hessian and SE information of the wrong sign, mu cubic coefficient -3, gamma SE typo'
-  defect_class: Bug (fixed upstream, pending merge)
+  defect_class: Bug (fixed upstream)
   matlab_location: '`+nstat/+decoding/PointProcessEM.m` (`PP_MStep` beta step, `PP_ComputeParamStandardErrors` beta / mu / gamma blocks) and `+nstat/+decoding/PPLFP.m` (`PPLFP_MStep`, `PPLFP_ComputeParamStandardErrors`) at master `1d425b9`; fixed on `fix/pp-em` (nSTAT PR #135) as bug 6, bug 7, C4, C5b, A1, A2, A4.'
   matlab_behavior: >-
     For the toolbox's binomial likelihood sum(dN log p - p), p = logistic(eta), the beta Newton step and the beta
@@ -1556,11 +1556,11 @@ entries:
     No gold fixture moves (the pplfp fixtures are poisson); the binomial PP_EM end-to-end case of
     `em_drivers.mat` (captured from `aa88a2b`) is within the measured Monte Carlo spread.
   discovered: EM track (fence report) / 2026-10
-  upstream_status: fixed-upstream-pending-merge
-  resolved_in: nSTAT PR #135 (fix/pp-em @ aa88a2b); nstat-python 24d8768, 57be326
+  upstream_status: adopted-upstream
+  resolved_in: cajigaslab/nSTAT@422b4d1 (PR #135 merged 2026-10-06, fix/pp-em @ aa88a2b); nstat-python 24d8768, 57be326
 - id: em-pr135-glm-mstep
   title: 'EM GLM M-step: fit discarded, coefficients mapped by sort order, 1 ms time base, global warning state, close all'
-  defect_class: Bug (fixed upstream, pending merge)
+  defect_class: Bug (fixed upstream)
   matlab_location: '`PointProcessEM.m` `PP_MStep` and `PPLFP.m` `PPLFP_MStep`, `MstepMethod = ''GLM''` branch, at master `1d425b9`; fixed on `fix/pp-em` (nSTAT PR #135) as bugs 2, 3, C5a, C6, C9, R4a, R4c, F1, F3.'
   matlab_behavior: >-
     The GLM fit was written to variables that were not returned (PP_MStep echoed its inputs); mu / beta / gamma
@@ -1575,11 +1575,11 @@ entries:
   - '`MstepMethod` other than ''GLM'' / ''NewtonRaphson'' raises ValueError (Python-only; MATLAB runs Newton-Raphson).'
   fixture_impact: '`tests/parity/fixtures/matlab_gold/em_glm_mstep.mat` (new, captured from `aa88a2b`; 15 cases incl. MATLAB''s own by-label construction).'
   discovered: EM track (fence report) / 2026-10
-  upstream_status: fixed-upstream-pending-merge
-  resolved_in: nSTAT PR #135 (fix/pp-em @ aa88a2b); nstat-python b6292c2
+  upstream_status: adopted-upstream
+  resolved_in: cajigaslab/nSTAT@422b4d1 (PR #135 merged 2026-10-06, fix/pp-em @ aa88a2b); nstat-python b6292c2
 - id: em-pr135-square-history-orientation
   title: 'Square history (numWindows == numCells): E-step logll, PPLFP filter and square beta transposed'
-  defect_class: Bug (fixed upstream, pending merge)
+  defect_class: Bug (fixed upstream)
   matlab_location: '`PointProcessEM.m` `PP_EStep` logll, `PPLFP.m` `PPLFP_Decode_update` / `PPLFP_EStep`, `PPAF.m` `PPDecodeFilterLinear` (ns == C beta) at master `1d425b9`; fixed on `fix/pp-em` (nSTAT PR #135) as C3, round-2 item 7 / A3, B1.'
   matlab_behavior: >-
     `if size(Hk,1)==numCells, Hk = Hk'` also fired for a square numWindows x numCells slice, pairing gamma(w,c)
@@ -1589,11 +1589,11 @@ entries:
   - '`_normalize_gamma` never transposes a square gamma; `PP_EStep` logll orients by columns (nstat-python `54f5a95`, `91acceb`); the Python PPLFP logll was already right.'
   fixture_impact: '`pp_estep.mat` cases c5 / c6 and `pp_square_history.mat` (b1sq, square cases), captured from the repaired MATLAB and bit-identical at `aa88a2b`.'
   discovered: EM track (fence report) / 2026-10
-  upstream_status: fixed-upstream-pending-merge
-  resolved_in: nSTAT PR #135 (fix/pp-em @ aa88a2b); nstat-python 54f5a95, 91acceb
+  upstream_status: adopted-upstream
+  resolved_in: cajigaslab/nSTAT@422b4d1 (PR #135 merged 2026-10-06, fix/pp-em @ aa88a2b); nstat-python 54f5a95, 91acceb
 - id: em-pr135-history-windows-and-time-base
   title: 'EM history: default windows off by one, shared gamma column never expanded, 1 kHz history trains at delta != 1 ms'
-  defect_class: Bug (fixed upstream, pending merge)
+  defect_class: Bug (fixed upstream)
   matlab_location: '`PP_EM` / `PPLFP_EM` default-window and history blocks, `PPHybridFilterLinear`, `PPLFP_DecodeLinear` / `PPLFP_fixedIntervalSmoother`, both SE routines, at master `1d425b9`; fixed on `fix/pp-em` (nSTAT PR #135) as B9, B2, B3, F12, F2, C6, R4b.'
   matlab_behavior: >-
     `0:delta:(length(gamma)+1)*delta` gave length(gamma)+1 windows for length(gamma) coefficients (every
@@ -1607,11 +1607,11 @@ entries:
   - '`_em_history_windows`, `_compute_history_terms`, `_expand_shared_se_gamma` in `nstat/decoding_algorithms.py` (nstat-python `985c59b`, `09357d0`, `0a0f03e`, `bd3f89e`, `c4b22e3`).'
   fixture_impact: '`pp_square_history.mat` (emdef, pp2ms, pphf) and `em_drivers.mat` case `pp_defwin` (the default windows through PP_EM itself), captured from the repaired MATLAB.'
   discovered: EM track / 2026-10
-  upstream_status: fixed-upstream-pending-merge
-  resolved_in: nSTAT PR #135 (fix/pp-em @ aa88a2b); nstat-python 985c59b
+  upstream_status: adopted-upstream
+  resolved_in: cajigaslab/nSTAT@422b4d1 (PR #135 merged 2026-10-06, fix/pp-em @ aa88a2b); nstat-python 985c59b
 - id: em-pr135-nonfinite-loglikelihood-and-defaults
   title: 'EM drivers: non-finite E-step log-likelihood not caught; x0 / Px0 estimated and GLM M-step by default'
-  defect_class: Bug (fixed upstream, pending merge)
+  defect_class: Bug (fixed upstream)
   matlab_location: '`PP_EM`, `PPLFP_EM`, `PP_EMCreateConstraints`, `PPLFP_EMCreateConstraints`, `PP_MStep`, `PPLFP_MStep` at master `1d425b9`; fixed on `fix/pp-em` (nSTAT PR #135) as bug 8, B5 and the round-2 / B8 defaults.'
   matlab_behavior: >-
     The single-sample Px0 estimate collapses to ~0 after one iteration, so the default constraints drove logll to
@@ -1624,11 +1624,11 @@ entries:
   - 'nstat-python `2e96a16` (non-finite stop, finite selection), `7ba404b` (defaults, breaking).  The Python-only determinant and eigenvalue floors that masked the collapse were removed in `f5738cd`, so a collapsed Px0 now stops EM as in MATLAB.'
   fixture_impact: No gold fixture moves (every recipe passes its constraints explicitly).
   discovered: EM track / 2026-10
-  upstream_status: fixed-upstream-pending-merge
-  resolved_in: nSTAT PR #135 (fix/pp-em @ aa88a2b); nstat-python 2e96a16, 7ba404b
+  upstream_status: adopted-upstream
+  resolved_in: cajigaslab/nSTAT@422b4d1 (PR #135 merged 2026-10-06, fix/pp-em @ aa88a2b); nstat-python 2e96a16, 7ba404b
 - id: em-pr135-standard-errors
   title: 'EM standard errors: scrambled SE layout, constraints ignored, Q / R / Px0 information precedence, mixed scales'
-  defect_class: Bug (fixed upstream, pending merge)
+  defect_class: Bug (fixed upstream)
   matlab_location: '`PP_ComputeParamStandardErrors`, `PPLFP_ComputeParamStandardErrors` and the drivers'' SE calls at master `1d425b9`; fixed on `fix/pp-em` (nSTAT PR #135) as 2a, B4, B6, G2, H1, F8.'
   matlab_behavior: >-
     `reshape(SEterms, C, dx)'` scrambled SE.beta / SE.gamma; PP's routine replaced the caller's constraints
@@ -1642,11 +1642,11 @@ entries:
   - 'Python had the intended information forms and layout for beta / gamma; nstat-python `57be326` (Pvals.gamma pairing), `42a7933` (A / C / full-Q row-major layout, a Python-only defect), `c109803` (F8), `09357d0` (PPLFP_EM SEs were always empty).  G2 has no Python analog (pinned in `68fcb6e`, `c8b9b89`).'
   fixture_impact: '`pplfp_SE.mat`, `pplfp_EM.mat` (SE, Pvals) recaptured from `aa88a2b` (nstat-python `3543128`).'
   discovered: EM track / 2026-10
-  upstream_status: fixed-upstream-pending-merge
-  resolved_in: nSTAT PR #135 (fix/pp-em @ aa88a2b); nstat-python 42a7933, c109803
+  upstream_status: adopted-upstream
+  resolved_in: cajigaslab/nSTAT@422b4d1 (PR #135 merged 2026-10-06, fix/pp-em @ aa88a2b); nstat-python 42a7933, c109803
 - id: em-pr135-monte-carlo-draws-and-whitening
   title: 'EM Monte Carlo draws and whitening used the upper Cholesky factor'
-  defect_class: Bug (fixed upstream, pending merge)
+  defect_class: Bug (fixed upstream)
   matlab_location: '`PointProcessEM.m` / `PPLFP.m`: 8 `chol_m*z` draw sites and the `Tq = inv(chol(Q0))` / `Tr` whitening of both drivers at master `1d425b9`; fixed on `fix/pp-em` (nSTAT PR #135) as F9 (`mcStateDraws`) and G1.'
   matlab_behavior: >-
     `m + chol(W)*z` has covariance R R', not W, for a non-diagonal W; `inv(chol(Q0))` does not whiten a
@@ -1657,11 +1657,11 @@ entries:
   - '`_mc_state_draws` (nstat-python `a6f0067`), lower-factor whitening (`2afd63b`); `7736495` fixed a Python-only back-transform (`T^-1 S T^-1` for `(T\S)/T''`).'
   fixture_impact: '`pplfp_MStep.mat` (betahat_new, muhat_new), `pplfp_EM.mat`, `pplfp_SE.mat` recaptured from the repaired MATLAB (`6b87c89`, `3543128`).'
   discovered: EM track (MATLAB fix wave) / 2026-10
-  upstream_status: fixed-upstream-pending-merge
-  resolved_in: nSTAT PR #135 (fix/pp-em @ aa88a2b); nstat-python a6f0067, 2afd63b
+  upstream_status: adopted-upstream
+  resolved_in: cajigaslab/nSTAT@422b4d1 (PR #135 merged 2026-10-06, fix/pp-em @ aa88a2b); nstat-python a6f0067, 2afd63b
 - id: em-pr135-information-criteria
   title: 'EM information criteria mixed scaled and original-scale terms; PPLFP_EM counted R with Q''s flags'
-  defect_class: Bug (fixed upstream, pending merge)
+  defect_class: Bug (fixed upstream)
   matlab_location: '`PP_EM` / `PPLFP_EM` IC block at master `1d425b9`; fixed on `fix/pp-em` (nSTAT PR #135) as F10, F11.'
   matlab_behavior: >-
     llobs combined the scaled-system logll and sumXkTerms with the unscaled Qhat / Px0hat, so AIC / BIC depended
@@ -1674,11 +1674,11 @@ entries:
   - 'nstat-python `34694d1` (F10), `48ebdc4` (F11).  The identity is pinned against MATLAB on every `em_drivers.mat` case (IC.llcomp = the E-step logll at MATLAB''s estimates, rtol 1e-10).'
   fixture_impact: '`pplfp_EM.mat` IC recaptured from `aa88a2b`; `em_drivers.mat` (new).'
   discovered: EM track (MATLAB fix wave) / 2026-10
-  upstream_status: fixed-upstream-pending-merge
-  resolved_in: nSTAT PR #135 (fix/pp-em @ aa88a2b); nstat-python 34694d1, 48ebdc4
+  upstream_status: adopted-upstream
+  resolved_in: cajigaslab/nSTAT@422b4d1 (PR #135 merged 2026-10-06, fix/pp-em @ aa88a2b); nstat-python 34694d1, 48ebdc4
 - id: em-se-singular-observed-information-never-returns
   title: 'EM standard errors never return when the observed information is singular (nearestSPD loops on NaN)'
-  defect_class: Bug (fixed upstream, pending merge)
+  defect_class: Bug (fixed upstream)
   matlab_location: '`PP_ComputeParamStandardErrors` (`invIObs = eye/IObs; nearestSPD(invIObs)`) and the same lines of `PPLFP_ComputeParamStandardErrors`, `libraries/NearestSymmetricPositiveDefinite/nearestSPD.m`, at `fix/pp-em` @ `aa88a2b`.'
   matlab_behavior: >-
     A separated history window (no spike with a spike in that window) walks its coefficient to the exp()
@@ -1700,8 +1700,8 @@ entries:
   - 'Python-only (documented): `np.linalg.inv` raises on an exactly singular IObs and both SE routines then use `_em_singular_information_inverse`: the pseudo-inverse (singular values <= 1e-15 x the largest dropped), SE = p-value = NaN for every parameter whose unit vector has a component > sqrt(eps) in the null space (not identifiable: the log-likelihood is flat along it), and a RuntimeWarning naming them (zero-based, e.g. `gamma[0, 1]`).  The pinv fallback used to report SE ~1e-8 and p = 0 for exactly those parameters (em_drivers pp_sep at MATLAB''s estimates: five separated gamma); after em-newton-solve-reciprocal-pivot every pp_sep run that reaches the underflow takes this branch.  The mirrored nearestSPD raises LinAlgError on a non-finite matrix instead of looping (`_matlab_nearest_spd`, nstat-python `f5738cd`).'
   fixture_impact: '`em_drivers.mat` case `pp_sep` is captured with 10 outputs for this reason.'
   discovered: EM final pass / 2026-10
-  upstream_status: fixed-upstream-pending-merge
-  resolved_in: nSTAT PR #137 (fix/se-singular-iobs @ c123ddf, issue #136); nstat-python fix/se-singular-projection
+  upstream_status: adopted-upstream
+  resolved_in: cajigaslab/nSTAT@08eb128 (PR #137 merged 2026-10-06, fix/se-singular-iobs @ c123ddf, issue #136); nstat-python fix/se-singular-projection
 - id: em-kf-family-not-repaired
   title: 'KF_EM''s upper-factor Monte Carlo draws, upper-factor whitening, operator-precedence information blocks, SE/IC scale mismatch, R''s IC parameter count, and the singular-information hang'
   defect_class: Bug (upstream MATLAB, fixed)
@@ -2245,6 +2245,29 @@ entries:
   fixture_impact: none
   discovered: P2b-2026-10
   upstream_status: n/a
+- id: fitressummary-hist-index-neuron-one-filter
+  title: 'FitResSummary.getHistIndex kept a history label only if neuron 1 had it; empty results crashed'
+  defect_class: Bug (fixed upstream)
+  matlab_location: '`FitResSummary.m` `getHistIndex` (`bAct(:,fitNum)` on the numLabels x numResults x numNeurons
+    array), `getHistCoeffs` / `getCoeffs` (`baseStrings` undefined when empty), fixed in `cajigaslab/nSTAT@d37a07a`
+    (PR #135).'
+  matlab_behavior: >-
+    Two subscripts on the 3-D `plotParams.bAct` fold dims 2-3, so the NaN filter read only neuron 1: when neuron 1's
+    history coefficients were NaN (se >= 100) every history label was dropped although other neurons had them,
+    `getHistCoeffs` then died on an undefined `baseStrings`, and `getCoeffIndex` / `getCoeffs` reported the history
+    terms as ordinary covariates.
+  correct_behavior: >-
+    Keep a label that is non-NaN for ANY requested fit and ANY neuron (`any(any(~isnan(bAct(:,fitNum,:)),2),3))`);
+    return empty outputs when nothing is left.
+  python_implementation:
+  - '`FitSummary.getHistIndex` / `getCoeffIndex` in `nstat/fit.py` never had the neuron-1 defect (they test every
+    neuron) and `getHistCoeffs` already returned empty arrays, but they filtered on the FIRST requested fit only; they
+    now use the union over every requested fit, as the repaired MATLAB (`_finite_label_mask`; test
+    `tests/test_fitresult_diagnostics.py::test_fitsummary_hist_and_coeff_index_keep_labels_finite_in_any_fit_and_neuron`).'
+  fixture_impact: none
+  discovered: parity-watch issue #274 / 2026-11-04
+  upstream_status: adopted-upstream
+  resolved_in: cajigaslab/nSTAT@422b4d1 (PR #135 merged 2026-10-06, d37a07a)
 checklist: "## Reviewer checklist for parity-affecting PRs\n\n- [ ] Every modified\
   \ gold fixture has a defects-ledger entry\n- [ ] Every \"MATLAB does X but I changed\
   \ Python to do Y\" claim has a citation\n- [ ] No silent fixture refresh (every\
