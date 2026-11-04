@@ -55,16 +55,22 @@ jobs:
             --matlab-repo "$GITHUB_WORKSPACE/nSTAT" \
             --baseline-file parity/upstream_watch_baseline.yml \
             --output-summary $GITHUB_STEP_SUMMARY \
-            --changes-output /tmp/changes.json
+            --changes-output "$RUNNER_TEMP/changes.json"
 
       - name: Open issue if changes detected
-        if: success() && hashFiles('/tmp/changes.json') != ''
+        # hashFiles() only sees files inside GITHUB_WORKSPACE, so a
+        # hashFiles('/tmp/...') guard is always empty and skips this step.
+        # The shell test below is the real guard.
+        if: success()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd nstat-python
           # The script writes changes.json only when there are changes;
           # if missing, no-op. If present, format a title + body and file.
-          if [ -s /tmp/changes.json ]; then
-            python tools/parity/upstream_watch.py --file-issue /tmp/changes.json
+          if [ -s "$RUNNER_TEMP/changes.json" ]; then
+            gh label create parity-watch --color FBCA04 \
+              --description "Upstream nSTAT MATLAB changes detected by parity-upstream-watch" \
+              --force
+            python tools/parity/upstream_watch.py --file-issue "$RUNNER_TEMP/changes.json"
           fi
