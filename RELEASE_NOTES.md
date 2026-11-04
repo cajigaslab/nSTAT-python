@@ -460,6 +460,34 @@ change)**
 - New `slow` / `matlab` pytest markers with `make test-slow`, `make test-matlab`
   and `make test-quick`; new `make numerical-drift-check`.
 
+**Also in v0.6.0** — these changes shipped in v0.6.0 but were missing from
+the notes above (added 2026-11-04):
+
+- New **`nstat.extras.continuous_cif`** (`simulate_cif_continuous`, #259): a
+  native-Python port of the MATLAB Simulink model
+  `PointProcessSimulationCont.slx`. Stimulus and ensemble drives are
+  continuous LTI filters integrated with `scipy.signal.lsim`; the
+  self-history feedback is discretized to the spike-generation sample time
+  (zero-order hold). Python-only `extras` feature with no MATLAB-parity
+  obligation; ships with core (NumPy + SciPy only). Helpfile:
+  `docs/extras/continuous_cif.md`.
+- Fix (#249, closes #248): `ssglm` / `ssglmFB` crashed on real input and the
+  EM diverged on high-rate or sparse units. `_psth_glm_coeffs` read the wrong
+  fit index; `estimateVarianceAcrossTrials` indexed coefficient columns by
+  realization number and propagated degenerate empty-bin coefficients into
+  the variance. `PPSS_EStep` gained a robust PSD inverse and a log-rate
+  state bound (`SSGLM_STATE_BOUND`); no change on well-conditioned problems.
+  New end-to-end test: `tests/test_ssglm_end_to_end.py`.
+- Extras dependency pins (#250, closes #127, #128, #180):
+  `statsmodels>=0.14.6` and `numpy>=2.0` in `[test-parity]` and
+  `[all-extras]`; `replay_trajectory_classification>=1.3,<1.4` for
+  `[clusterless]`, because 1.4 changed the decoder API that the bridge
+  targets.
+- All 17 `examples/extras/` demo scripts now use concrete BCI and clinical
+  scenarios (#255), with the gallery, figures and helpfiles regenerated.
+- Fix (#257): `examples/tutorials/place_cell_walkthrough.py` downloads its
+  dataset itself. Fix (#258): a broken link in the `interop_neo` helpfile.
+
 ### Spatiotemporal point processes for `nstat.extras.spatial` (code-complete 2026-07-03)
 
 **Spatiotemporal point processes for `nstat.extras.spatial`.** Six new
