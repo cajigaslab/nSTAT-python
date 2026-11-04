@@ -1,6 +1,6 @@
 name: parity-upstream-watch
 
-# Watches cajigaslab/nSTAT@main for changes to canonical MATLAB function
+# Watches cajigaslab/nSTAT@master for changes to canonical MATLAB function
 # bodies that the nstat-python parity audit tracks. When the hash of any
 # tracked .m file changes vs the last recorded baseline, opens a GitHub
 # issue summarizing the diff so a v10-style reconciliation cycle can run.
@@ -31,11 +31,11 @@ jobs:
         with:
           path: nstat-python
 
-      - name: Checkout cajigaslab/nSTAT@main
+      - name: Checkout cajigaslab/nSTAT@master
         uses: actions/checkout@v4
         with:
           repository: cajigaslab/nSTAT
-          ref: main
+          ref: master
           path: nSTAT
 
       - name: Set up Python

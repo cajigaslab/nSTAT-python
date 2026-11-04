@@ -1,6 +1,6 @@
 version: 1
 updated_utc: '2026-06-23T02:46:49Z'
-matlab_repo: cajigaslab/nSTAT@main
+matlab_repo: cajigaslab/nSTAT@master
 tracked_files: 32
 hashes:
   Analysis.m: 68e20b2f43e26eb1
