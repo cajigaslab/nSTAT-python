@@ -160,7 +160,7 @@ def file_issue(changes_json_path: Path) -> None:
 
     title = f"[parity-watch] Upstream MATLAB changes detected {date.today().isoformat()}"
     body_lines = [
-        "Automated detection: `cajigaslab/nSTAT@main` content hash changed for tracked files.",
+        "Automated detection: `cajigaslab/nSTAT@master` content hash changed for tracked files.",
         "",
         f"**{len(changes)} of {len(TRACKED_FILES)} tracked files differ.**",
         "",
@@ -209,7 +209,7 @@ def update_baseline(matlab_repo: Path, baseline_file: Path) -> None:
         "updated_utc": subprocess.check_output(
             ["date", "-u", "+%Y-%m-%dT%H:%M:%SZ"]
         ).decode().strip(),
-        "matlab_repo": "cajigaslab/nSTAT@main",
+        "matlab_repo": "cajigaslab/nSTAT@master",
         "tracked_files": len(TRACKED_FILES),
         "hashes": current,
     }

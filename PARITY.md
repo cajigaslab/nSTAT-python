@@ -1059,7 +1059,7 @@ automation deferred since v11.
   `.github/workflows/parity-upstream-watch.yml`:
   - Triggers: `workflow_dispatch` (primary) + `schedule: 0 7 * * 1`
     (weekly Monday 7AM UTC)
-  - Pulls `cajigaslab/nSTAT@main`, computes SHA-256 hashes of 32 canonical
+  - Pulls `cajigaslab/nSTAT@master`, computes SHA-256 hashes of 32 canonical
     `.m` files (Analysis, decoding family, all 17 helpfile sources)
   - Diffs against `parity/upstream_watch_baseline.yml`
   - If any hashes differ: opens an issue titled
