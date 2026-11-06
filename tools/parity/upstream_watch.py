@@ -68,6 +68,15 @@ TRACKED_FILES = [
     "FitResult.m",
     "FitResSummary.m",
     "CIF.m",
+    # Collections, decoding algorithms, and CI/CIF helpers that the Python
+    # mirrors (nstColl, CovariateCollection, ConfigCollection,
+    # DecodingAlgorithms, ConfidenceInterval, LinearCIF) are ported from.
+    "nstColl.m",
+    "CovColl.m",
+    "ConfigColl.m",
+    "DecodingAlgorithms.m",
+    "ConfidenceInterval.m",
+    "LinearCIF.m",
     # Decoding family — moved to +nstat/+decoding/ namespace in v10 upstream reorg
     "+nstat/+decoding/PPAF.m",
     "+nstat/+decoding/PPHF.m",

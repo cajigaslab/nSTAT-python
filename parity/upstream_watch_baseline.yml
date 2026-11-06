@@ -1,7 +1,7 @@
 version: 1
-updated_utc: '2026-11-04T17:34:54Z'
+updated_utc: '2026-11-06T01:56:16Z'
 matlab_repo: cajigaslab/nSTAT@master
-tracked_files: 32
+tracked_files: 38
 hashes:
   Analysis.m: 68e20b2f43e26eb1
   SignalObj.m: 80143d0839079391
@@ -14,6 +14,12 @@ hashes:
   FitResult.m: 1aca2e8cf250c290
   FitResSummary.m: 7e8d860d641a6bac
   CIF.m: 46d1e297f2e3ed50
+  nstColl.m: 07b6aa99bc5ebe29
+  CovColl.m: b3a0402581e1ae06
+  ConfigColl.m: b1547f1d15020e2a
+  DecodingAlgorithms.m: 093ec2c04ed5e918
+  ConfidenceInterval.m: e806a41374b01baa
+  LinearCIF.m: 1cec8a4cade02578
   +nstat/+decoding/PPAF.m: 1190a8f96a742b63
   +nstat/+decoding/PPHF.m: 9841f54ec493110b
   +nstat/+decoding/PPLFP.m: 5507991df19bfe4f
