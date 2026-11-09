@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+**Parity fix** — `FitSummary.getHistIndex` / `getCoeffIndex` now keep a
+coefficient label that is finite for *any* requested fit and *any* neuron,
+matching MATLAB `FitResSummary` after cajigaslab/nSTAT@d37a07a (previously
+only the first requested fit was inspected). Closes #274.
+
 **Tooling / tests** — hardening added after the v0.6.0 / 2026-10 EM release
 cycle, closing gaps that no local gate had caught:
 
